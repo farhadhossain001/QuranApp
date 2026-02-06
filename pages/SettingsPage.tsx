@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../context/Store';
 import { Moon, Sun, Monitor, Type, Globe, Mic, BookA, MapPin, Loader2 } from 'lucide-react';
@@ -227,6 +228,16 @@ const SettingsPage = () => {
                     />
                     <span className="text-xl px-2">A</span>
                 </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+                <span>{t('showArabic')}</span>
+                <button 
+                    onClick={() => updateSettings({ showArabic: !settings.showArabic })}
+                    className={`w-12 h-6 rounded-full relative transition-colors ${settings.showArabic ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-700'}`}
+                >
+                    <span className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${settings.showArabic ? 'translate-x-6' : ''}`} />
+                </button>
             </div>
 
             <div className="flex items-center justify-between">

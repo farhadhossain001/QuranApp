@@ -45,6 +45,7 @@ export interface Bookmark {
 export interface UserSettings {
   theme: 'light' | 'dark';
   fontSize: number; // 1 to 5 scale
+  showArabic: boolean;
   showTranslation: boolean;
   showTransliteration: boolean;
   reciterId: number;
@@ -77,37 +78,35 @@ export const ARABIC_FONT_SIZES = {
   5: 'text-6xl',
 };
 
-// Hadith Interfaces
+// Hadith Interfaces - Updated for fawazahmed0/hadith-api
+export interface HadithEdition {
+  name: string; // slug, e.g. "eng-abudawud"
+  language: string; // e.g. "English"
+  link: string; // full book url
+}
+
 export interface HadithBook {
-  id: number;
-  bookName: string;
-  bookSlug: string;
-  writerName: string;
-  writerDeath: string;
-  chapters_count: string;
-  hadiths_count: string;
+  id: string; // slug, e.g., 'abudawud'
+  name: string; // Display Name, e.g. 'Sunan Abu Dawud'
+  editions: HadithEdition[];
 }
 
 export interface HadithChapter {
-  id: number;
-  chapterNumber: string;
-  chapterEnglish: string;
-  chapterUrdu: string;
-  chapterArabic: string;
+  id: string; // Section ID/Number (e.g. "1")
+  sectionNumber: string; 
+  sectionName: string; // e.g. "Revelation"
   bookSlug: string;
 }
 
+export interface HadithGrade {
+  grade: string;
+  source_name?: string;
+  error?: string;
+}
+
 export interface Hadith {
-  id: number;
   hadithNumber: string;
-  englishNarrator: string;
-  hadithEnglish: string;
-  hadithUrdu: string;
-  hadithArabic: string;
-  headingEnglish: string;
-  headingUrdu: string;
-  headingArabic: string;
-  bookSlug: string;
-  chapterId: string;
-  status: string;
+  textArabic: string;
+  textTranslation: string;
+  grades: HadithGrade[];
 }

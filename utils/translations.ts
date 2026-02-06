@@ -1,3 +1,4 @@
+
 export const translations: Record<string, Record<string, string>> = {
   en: {
     home: 'Home',
@@ -24,6 +25,7 @@ export const translations: Record<string, Record<string, string>> = {
     dark: 'Dark',
     readingExp: 'Reading Experience',
     fontSize: 'Font Size',
+    showArabic: 'Show Arabic',
     showTranslation: 'Show Translation',
     appLanguage: 'App Language',
     translationLanguage: 'Translation Language',
@@ -85,7 +87,8 @@ export const translations: Record<string, Record<string, string>> = {
     quranDesc: 'Read and Listen to the Holy Book',
     hadith: 'Hadith',
     hadithDesc: 'Sayings of Prophet Muhammad (PBUH)',
-    comingSoon: 'Coming Soon'
+    comingSoon: 'Coming Soon',
+    narratedBy: 'Narrated by',
   },
   bn: {
     home: 'হোম',
@@ -112,6 +115,7 @@ export const translations: Record<string, Record<string, string>> = {
     dark: 'ডার্ক',
     readingExp: 'পড়ার অভিজ্ঞতা',
     fontSize: 'ফন্টের আকার',
+    showArabic: 'আরবি দেখান',
     showTranslation: 'অনুবাদ দেখান',
     appLanguage: 'অ্যাপের ভাষা',
     translationLanguage: 'অনুবাদের ভাষা',
@@ -173,6 +177,7 @@ export const translations: Record<string, Record<string, string>> = {
     quranDesc: 'পবিত্র গ্রন্থ পড়ুন এবং শুনুন',
     hadith: 'হাদিস',
     hadithDesc: 'নবী করীম (সাঃ) এর বাণী',
-    comingSoon: 'শীঘ্রই আসছে'
+    comingSoon: 'শীঘ্রই আসছে',
+    narratedBy: 'বর্ণনাকারী',
   }
 };

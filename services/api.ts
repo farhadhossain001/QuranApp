@@ -1,10 +1,10 @@
+
 import { Surah, Ayah, HadithBook, HadithChapter, Hadith } from '../types';
 
 const BASE_URL = 'https://api.quran.com/api/v4';
 
-// Hadith API Configuration
-const HADITH_API_KEY = '$2y$10$fA0bKEdm0HpulWvGRmQKkkoVJtxVXMYs6oaVD434C6OEDvmmfy';
-const HADITH_BASE_URL = 'https://hadithapi.com/public/api';
+// Hadith API Configuration (New Provider)
+const HADITH_BASE_URL = 'https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1';
 
 // Translation IDs: 
 // 161: Bangla (Dr. Abu Bakr Muhammad Zakaria)
@@ -108,40 +108,166 @@ export const getPrayerTimes = async (lat: number, lng: number) => {
   }
 };
 
-// --- Hadith API Functions ---
+// --- Hadith API Functions (New Provider) ---
+
+// In-memory cache to prevent re-fetching large JSON files
+let editionsCache: any = null;
+let infoCache: any = null;
+
+const fetchEditions = async () => {
+    if (editionsCache) return editionsCache;
+    try {
+        const res = await fetch(`${HADITH_BASE_URL}/editions.min.json`);
+        if (!res.ok) throw new Error("Failed to fetch editions");
+        const data = await res.json();
+        editionsCache = data;
+        return data;
+    } catch (e) {
+        console.error(e);
+        return {};
+    }
+};
+
+const fetchInfo = async () => {
+    if (infoCache) return infoCache;
+    try {
+        const res = await fetch(`${HADITH_BASE_URL}/info.min.json`);
+        if (!res.ok) throw new Error("Failed to fetch hadith info");
+        const data = await res.json();
+        infoCache = data;
+        return data;
+    } catch (e) {
+        console.error(e);
+        return {};
+    }
+}
 
 export const getHadithBooks = async (): Promise<HadithBook[]> => {
   try {
-    // API key must be encoded as it contains special characters like $
-    const response = await fetch(`${HADITH_BASE_URL}/books?apiKey=${encodeURIComponent(HADITH_API_KEY)}`);
-    if (!response.ok) throw new Error('Failed to fetch hadith books');
-    const data = await response.json();
-    return data.books || [];
+    const editions = await fetchEditions();
+    // editions.min.json structure: { "abudawud": { "name": "Sunan Abu Dawud", "collection": [...] }, ... }
+    
+    return Object.entries(editions).map(([slug, data]: [string, any]) => {
+        return {
+            id: slug,
+            name: data.name || slug,
+            editions: (data.collection || []).map((c: any) => ({
+                name: c.name, // e.g. "ben-abudawud"
+                language: c.language, // e.g. "Bengali"
+                link: c.link
+            }))
+        };
+    });
   } catch (error) {
-    console.error(error);
+    console.error("Error getting hadith books:", error);
     return [];
   }
 };
 
 export const getHadithChapters = async (bookSlug: string): Promise<HadithChapter[]> => {
   try {
-    // Modified: URL structure changed from .../books/{slug}/chapters to .../{slug}/chapters based on user correction
-    const response = await fetch(`${HADITH_BASE_URL}/${bookSlug}/chapters?apiKey=${encodeURIComponent(HADITH_API_KEY)}`);
-    if (!response.ok) throw new Error(`Failed to fetch hadith chapters for ${bookSlug}`);
-    const data = await response.json();
-    return data.chapters || [];
+    const info = await fetchInfo();
+    const bookInfo = info[bookSlug];
+    
+    if (!bookInfo || !bookInfo.metadata || !bookInfo.metadata.sections) {
+        return [];
+    }
+
+    const sections = bookInfo.metadata.sections;
+    // sections is object { "1": "Revelation", ... }
+    
+    return Object.entries(sections).map(([number, title]) => ({
+        id: number,
+        sectionNumber: number,
+        sectionName: title as string,
+        bookSlug: bookSlug
+    }));
   } catch (error) {
-    console.error(error);
+    console.error("Error getting hadith chapters:", error);
     return [];
   }
 };
 
-export const getHadiths = async (bookSlug: string, chapterNumber: string): Promise<Hadith[]> => {
+export const getHadiths = async (bookSlug: string, sectionNumber: string, translationEditionSlug?: string): Promise<Hadith[]> => {
   try {
-    const response = await fetch(`${HADITH_BASE_URL}/hadiths?book=${bookSlug}&chapter=${chapterNumber}&apiKey=${encodeURIComponent(HADITH_API_KEY)}`);
-    if (!response.ok) throw new Error('Failed to fetch hadiths');
-    const data = await response.json();
-    return data.hadiths?.data || data.hadiths || [];
+    // 1. Get Metadata to identify Arabic edition
+    const editionsData = await fetchEditions();
+    const bookData = editionsData[bookSlug];
+    
+    if (!bookData || !bookData.collection) return [];
+
+    const collection = bookData.collection;
+
+    // Find Arabic edition (Source text)
+    // Usually starts with 'ara-', or language is Arabic
+    const arabicEdition = collection.find((c: any) => c.language.toLowerCase() === 'arabic' && c.name.startsWith('ara-')) 
+                          || collection.find((c: any) => c.language.toLowerCase() === 'arabic')
+                          || { name: `ara-${bookSlug}` };
+    
+    const arabicSlug = arabicEdition.name;
+
+    // Determine Translation Edition
+    let transSlug = translationEditionSlug;
+    
+    // If no specific translation provided, try to find English or Bengali default
+    if (!transSlug) {
+        const eng = collection.find((c: any) => c.language.toLowerCase() === 'english');
+        transSlug = eng ? eng.name : null;
+    }
+
+    // Construct URLs for sections
+    const arabicUrl = `${HADITH_BASE_URL}/editions/${arabicSlug}/sections/${sectionNumber}.json`;
+    
+    const promises = [fetch(arabicUrl).catch(e => null)];
+    if (transSlug && transSlug !== arabicSlug) {
+        const transUrl = `${HADITH_BASE_URL}/editions/${transSlug}/sections/${sectionNumber}.json`;
+        promises.push(fetch(transUrl).catch(e => null));
+    }
+
+    const responses = await Promise.all(promises);
+    const araRes = responses[0];
+    const transRes = responses[1]; // might be undefined
+
+    let araData: any = {};
+    let transData: any = {};
+
+    if (araRes && araRes.ok) araData = await araRes.json();
+    if (transRes && transRes.ok) transData = await transRes.json();
+
+    const hadiths: Hadith[] = [];
+    const araHadiths = araData.hadiths || [];
+    const transHadiths = transData.hadiths || [];
+
+    // Map translation by hadithnumber
+    const transMap = new Map();
+    transHadiths.forEach((h: any) => transMap.set(h.hadithnumber, h));
+
+    // Combine
+    araHadiths.forEach((araH: any) => {
+        const transH = transMap.get(araH.hadithnumber);
+        
+        hadiths.push({
+            hadithNumber: araH.hadithnumber,
+            textArabic: araH.text || "",
+            textTranslation: transH ? transH.text : "", // Empty if no translation found
+            grades: araH.grades || []
+        });
+    });
+
+    // Handle case where Arabic might be missing but translation exists
+    if (hadiths.length === 0 && transHadiths.length > 0) {
+        transHadiths.forEach((transH: any) => {
+            hadiths.push({
+                hadithNumber: transH.hadithnumber,
+                textArabic: "",
+                textTranslation: transH.text,
+                grades: transH.grades || []
+            });
+        });
+    }
+
+    return hadiths;
+
   } catch (error) {
     console.error(error);
     return [];

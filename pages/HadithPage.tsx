@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ScrollText, Book, ArrowRight } from 'lucide-react';
@@ -14,11 +15,38 @@ const HadithPage = () => {
         setHeaderTitle(t('hadith'));
         const fetchBooks = async () => {
             const data = await getHadithBooks();
-            setBooks(data);
+            // Sort books: Bukhari and Muslim first
+            const sorted = data.sort((a, b) => {
+                const priority = ['bukhari', 'muslim', 'abudawud', 'tirmidhi', 'nasai', 'ibnmajah'];
+                const aIdx = priority.indexOf(a.id);
+                const bIdx = priority.indexOf(b.id);
+                if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+                if (aIdx !== -1) return -1;
+                if (bIdx !== -1) return 1;
+                return a.name.localeCompare(b.name);
+            });
+            setBooks(sorted);
             setLoading(false);
         };
         fetchBooks();
     }, [t, setHeaderTitle]);
+
+    const getLanguageCodes = (book: HadithBook) => {
+        const codes = new Set<string>();
+        book.editions.forEach(e => {
+            const lang = e.language.toLowerCase();
+            if (lang === 'english') codes.add('EN');
+            else if (lang === 'bengali') codes.add('BN');
+            else if (lang === 'arabic') codes.add('AR');
+            else if (lang === 'french') codes.add('FR');
+            else if (lang === 'urdu') codes.add('UR');
+            else if (lang === 'indonesian') codes.add('ID');
+            else if (lang === 'russian') codes.add('RU');
+            else if (lang === 'turkish') codes.add('TR');
+            else codes.add(lang.substring(0, 2).toUpperCase());
+        });
+        return Array.from(codes).slice(0, 4); // Show max 4
+    };
 
     if (loading) {
         return (
@@ -43,33 +71,46 @@ const HadithPage = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {books.map((book) => (
-                    <Link 
-                        key={book.id} 
-                        to={`/hadith/${book.bookSlug}`}
-                        className="group bg-white dark:bg-surface-dark p-6 rounded-2xl border border-gray-200 dark:border-gray-800 hover:border-primary dark:hover:border-primary-dark transition shadow-sm hover:shadow-md flex flex-col justify-between"
-                    >
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-xl text-primary dark:text-primary-dark group-hover:bg-primary group-hover:text-white transition-colors">
-                                <Book size={24} />
+                {books.map((book) => {
+                    const langs = getLanguageCodes(book);
+                    const totalLangs = new Set(book.editions.map(e => e.language)).size;
+
+                    return (
+                        <Link 
+                            key={book.id} 
+                            to={`/hadith/${book.id}`}
+                            className="group bg-white dark:bg-surface-dark p-6 rounded-2xl border border-gray-200 dark:border-gray-800 hover:border-primary dark:hover:border-primary-dark transition shadow-sm hover:shadow-md flex flex-col justify-between"
+                        >
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="bg-gray-100 dark:bg-gray-800 p-3 rounded-xl text-primary dark:text-primary-dark group-hover:bg-primary group-hover:text-white transition-colors">
+                                    <Book size={24} />
+                                </div>
+                                <div className="flex flex-wrap gap-1 justify-end max-w-[60%]">
+                                    {langs.map(code => (
+                                        <span key={code} className="text-[10px] bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded">
+                                            {code}
+                                        </span>
+                                    ))}
+                                    {totalLangs > 4 && (
+                                         <span className="text-[10px] bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 px-2 py-1 rounded">
+                                            +{totalLangs - 4}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
-                            <span className="text-xs font-bold px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-gray-500 dark:text-gray-400">
-                                {book.hadiths_count} Hadiths
-                            </span>
-                        </div>
-                        
-                        <div>
-                            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-primary transition-colors">
-                                {book.bookName}
-                            </h2>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{book.writerName}</p>
                             
-                            <div className="flex items-center text-sm font-medium text-primary dark:text-primary-dark opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
-                                Read Book <ArrowRight size={16} className="ml-1" />
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-primary transition-colors capitalize">
+                                    {book.name}
+                                </h2>
+                                
+                                <div className="flex items-center text-sm font-medium text-primary dark:text-primary-dark opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0 mt-3">
+                                    Read Collection <ArrowRight size={16} className="ml-1" />
+                                </div>
                             </div>
-                        </div>
-                    </Link>
-                ))}
+                        </Link>
+                    )
+                })}
             </div>
         </div>
     );

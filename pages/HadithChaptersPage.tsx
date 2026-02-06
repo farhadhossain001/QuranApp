@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAppStore } from '../context/Store';
@@ -28,8 +29,8 @@ const HadithChaptersPage = () => {
     }, [bookSlug, setHeaderTitle]);
 
     const filteredChapters = chapters.filter(c => 
-        c.chapterEnglish.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        c.chapterNumber.includes(searchQuery)
+        c.sectionName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        c.sectionNumber.includes(searchQuery)
     );
 
     return (
@@ -38,7 +39,7 @@ const HadithChaptersPage = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input 
                     type="text" 
-                    placeholder="Search chapters..."
+                    placeholder="Search sections..."
                     className="w-full pl-10 pr-4 py-3 rounded-xl bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-800 focus:outline-none focus:ring-2 focus:ring-primary/50 transition shadow-sm"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -56,21 +57,18 @@ const HadithChaptersPage = () => {
                     {filteredChapters.map((chapter) => (
                         <Link 
                             key={chapter.id} 
-                            to={`/hadith/${bookSlug}/${chapter.chapterNumber}`}
+                            to={`/hadith/${bookSlug}/${chapter.sectionNumber}`}
                             className="block bg-white dark:bg-surface-dark p-5 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-primary dark:hover:border-primary-dark transition shadow-sm hover:shadow-md group"
                         >
                             <div className="flex justify-between items-center">
                                 <div className="flex items-center gap-4">
                                     <div className="w-10 h-10 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center font-bold text-gray-600 dark:text-gray-300 group-hover:bg-primary group-hover:text-white transition-colors">
-                                        {chapter.chapterNumber}
+                                        {chapter.sectionNumber}
                                     </div>
                                     <div>
                                         <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
-                                            {chapter.chapterEnglish}
+                                            {chapter.sectionName}
                                         </h3>
-                                        <p className="text-sm text-gray-500 dark:text-gray-400 font-amiri mt-1">
-                                            {chapter.chapterArabic}
-                                        </p>
                                     </div>
                                 </div>
                             </div>

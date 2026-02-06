@@ -1,9 +1,11 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { getChapterInfo, getVerses, getAyahAudioUrl } from '../services/api';
 import { Surah, Ayah, ARABIC_FONT_SIZES, FONT_SIZES } from '../types';
 import { Play, Pause, Bookmark as BookmarkIcon, Share2 } from 'lucide-react';
 import { useAppStore } from '../context/Store';
+import SettingsDrawer from '../components/SettingsDrawer';
 
 const SurahPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -89,6 +91,8 @@ const SurahPage = () => {
 
   return (
     <div className="max-w-4xl mx-auto pb-20">
+      <SettingsDrawer type="surah" />
+      
       {/* Header */}
       {surah && (
         <div className="text-center mb-10 py-8 bg-surface-light dark:bg-surface-dark rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
@@ -139,9 +143,11 @@ const SurahPage = () => {
                     </div>
 
                     {/* Arabic */}
-                    <p className={`font-amiri text-right leading-[2.2] mb-6 text-gray-900 dark:text-gray-100 ${ARABIC_FONT_SIZES[settings.fontSize as keyof typeof ARABIC_FONT_SIZES]}`}>
-                        {ayah.text_uthmani}
-                    </p>
+                    {settings.showArabic && (
+                        <p className={`font-amiri text-right leading-[2.2] mb-6 text-gray-900 dark:text-gray-100 ${ARABIC_FONT_SIZES[settings.fontSize as keyof typeof ARABIC_FONT_SIZES]}`}>
+                            {ayah.text_uthmani}
+                        </p>
+                    )}
 
                     {/* Translations */}
                     {settings.showTranslation && (

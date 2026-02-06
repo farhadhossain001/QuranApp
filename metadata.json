@@ -1,5 +1,5 @@
 {
-  "name": "Qur'an Light",
+  "name": "Qur'an Light api change v2",
   "description": "A modern, accessible, and distraction-free Qur'an reading application with multi-language support and audio recitation.",
   "requestFramePermissions": [
     "geolocation"

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { UserSettings, Bookmark, Surah } from '../types';
 import { translations } from '../utils/translations';
@@ -31,11 +32,14 @@ interface AppContextType {
   t: (key: string) => string;
   formatNumber: (num: number | string) => string;
   getSurahName: (surah: Surah) => string;
+  isSettingsDrawerOpen: boolean;
+  setSettingsDrawerOpen: (isOpen: boolean) => void;
 }
 
 const defaultSettings: UserSettings = {
   theme: 'light',
   fontSize: 3,
+  showArabic: true,
   showTranslation: true,
   showTransliteration: false,
   reciterId: 7,
@@ -56,25 +60,46 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Settings State
   const [settings, setSettings] = useState<UserSettings>(() => {
-    const stored = localStorage.getItem('quran_settings');
-    // Migration: merge defaults for new properties (like location)
-    const parsed = stored ? JSON.parse(stored) : {};
-    return { ...defaultSettings, ...parsed, location: parsed.location || defaultSettings.location };
+    try {
+        const stored = localStorage.getItem('quran_settings');
+        // Migration: merge defaults for new properties (like location)
+        const parsed = stored ? JSON.parse(stored) : {};
+        // Ensure merged settings have all required fields even if storage is partial or old
+        return { 
+            ...defaultSettings, 
+            ...parsed, 
+            location: (parsed.location && typeof parsed.location === 'object') ? parsed.location : defaultSettings.location 
+        };
+    } catch (e) {
+        console.error("Failed to parse settings from local storage, using defaults", e);
+        return defaultSettings;
+    }
   });
 
   // Header Title State
   const [headerTitle, setHeaderTitle] = useState("Qur'an Light");
+  
+  // Drawer State
+  const [isSettingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
 
   // Bookmarks State
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(() => {
-    const stored = localStorage.getItem('quran_bookmarks');
-    return stored ? JSON.parse(stored) : [];
+    try {
+        const stored = localStorage.getItem('quran_bookmarks');
+        return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+        return [];
+    }
   });
 
   // Recent Surah
   const [recentSurah, setRecentState] = useState<Surah | null>(() => {
-      const stored = localStorage.getItem('quran_recent');
-      return stored ? JSON.parse(stored) : null;
+      try {
+        const stored = localStorage.getItem('quran_recent');
+        return stored ? JSON.parse(stored) : null;
+      } catch (e) {
+        return null;
+      }
   });
 
   // Audio State
@@ -210,7 +235,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setHeaderTitle,
         t,
         formatNumber,
-        getSurahName
+        getSurahName,
+        isSettingsDrawerOpen,
+        setSettingsDrawerOpen
       }}
     >
       {children}

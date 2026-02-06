@@ -1,9 +1,10 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../context/Store';
 import { 
   Home, Bookmark, Settings, Search, Play, Pause, X, Moon, Sun, BookOpen, 
-  SkipBack, SkipForward, Repeat, Repeat1, Volume2, VolumeX, Gauge, Loader2, ArrowLeft
+  SkipBack, SkipForward, Repeat, Repeat1, Volume2, VolumeX, Gauge, Loader2, ArrowLeft, SlidersHorizontal
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -128,7 +129,7 @@ const AudioPlayerBar = () => {
   if (!audio.audioUrl) return null;
 
   return (
-    <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-white dark:bg-surface-dark border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50 animate-slide-up">
+    <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-white dark:bg-surface-dark border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50 animate-slide-up transition-all duration-300">
       <audio 
         ref={audioRef} 
         preload="auto"
@@ -252,7 +253,7 @@ const AudioPlayerBar = () => {
 };
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { settings, updateSettings, t, headerTitle } = useAppStore();
+  const { settings, updateSettings, t, headerTitle, audio, isSettingsDrawerOpen, setSettingsDrawerOpen } = useAppStore();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -268,6 +269,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   ];
 
   const isHome = location.pathname === '/';
+  // Check if we should show the Page Settings icon
+  const showPageSettings = location.pathname.startsWith('/surah/') || location.pathname.startsWith('/hadith/');
+  
+  // Calculate bottom padding for mobile
+  // Always include Nav height (pb-24) + Audio height if playing (approx +16/4rem)
+  const mobilePadding = audio.audioUrl ? 'pb-40' : 'pb-24';
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-background-light dark:bg-background-dark text-gray-900 dark:text-gray-100 transition-colors duration-300">
@@ -294,6 +301,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     )}
 
                     <div className="flex items-center gap-3">
+                        {/* Page Settings Toggle */}
+                        {showPageSettings && (
+                            <button 
+                                onClick={() => setSettingsDrawerOpen(!isSettingsDrawerOpen)}
+                                className={`p-2 rounded-full transition ${isSettingsDrawerOpen ? 'bg-primary/10 text-primary' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+                                aria-label="Page Settings"
+                            >
+                                <SlidersHorizontal size={20} />
+                            </button>
+                        )}
+
                         <button 
                             onClick={toggleTheme} 
                             className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition"
@@ -303,7 +321,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         </button>
                         <Link 
                             to="/settings"
-                            className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition"
+                            className="hidden md:block p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition"
                             aria-label="Settings"
                         >
                             <Settings size={20} />
@@ -314,14 +332,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* Main Content */}
-        <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-6">
+        <main className={`flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 md:pb-6 ${mobilePadding}`}>
             {children}
         </main>
 
         {/* Audio Player */}
         <AudioPlayerBar />
 
-        {/* Mobile Bottom Nav */}
+        {/* Mobile Bottom Nav - Always visible */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-surface-dark border-t border-gray-200 dark:border-gray-800 z-40 pb-safe">
             <div className="flex justify-around items-center h-16">
                 {navItems.map((item) => {
