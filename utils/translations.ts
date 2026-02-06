@@ -78,7 +78,14 @@ export const translations: Record<string, Record<string, string>> = {
     hijri_9: 'Ramadan',
     hijri_10: 'Shawwal',
     hijri_11: 'Dhu al-Qi\'dah',
-    hijri_12: 'Dhu al-Hijjah'
+    hijri_12: 'Dhu al-Hijjah',
+    // Categories
+    categories: 'Categories',
+    quran: 'Al-Qur\'an',
+    quranDesc: 'Read and Listen to the Holy Book',
+    hadith: 'Hadith',
+    hadithDesc: 'Sayings of Prophet Muhammad (PBUH)',
+    comingSoon: 'Coming Soon'
   },
   bn: {
     home: 'হোম',
@@ -159,6 +166,13 @@ export const translations: Record<string, Record<string, string>> = {
     hijri_9: 'রমজান',
     hijri_10: 'শাওয়াল',
     hijri_11: 'জিলকদ',
-    hijri_12: 'জিলহজ'
+    hijri_12: 'জিলহজ',
+    // Categories
+    categories: 'বিভাগ',
+    quran: 'আল-কুরআন',
+    quranDesc: 'পবিত্র গ্রন্থ পড়ুন এবং শুনুন',
+    hadith: 'হাদিস',
+    hadithDesc: 'নবী করীম (সাঃ) এর বাণী',
+    comingSoon: 'শীঘ্রই আসছে'
   }
 };

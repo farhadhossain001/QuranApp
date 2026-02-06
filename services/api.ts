@@ -1,6 +1,10 @@
-import { Surah, Ayah } from '../types';
+import { Surah, Ayah, HadithBook, HadithChapter, Hadith } from '../types';
 
 const BASE_URL = 'https://api.quran.com/api/v4';
+
+// Hadith API Configuration
+const HADITH_API_KEY = '$2y$10$fA0bKEdm0HpulWvGRmQKkkoVJtxVXMYs6oaVD434C6OEDvmmfy';
+const HADITH_BASE_URL = 'https://hadithapi.com/public/api';
 
 // Translation IDs: 
 // 161: Bangla (Dr. Abu Bakr Muhammad Zakaria)
@@ -18,7 +22,7 @@ export const RECITERS = [
 export const getChapters = async (): Promise<Surah[]> => {
   try {
     const response = await fetch(`${BASE_URL}/chapters`);
-    if (!response.ok) throw new Error('Failed to fetch chapters');
+    if (!response.ok) throw new Error('Failed to fetch Quran chapters');
     const data = await response.json();
     return data.chapters;
   } catch (error) {
@@ -101,5 +105,45 @@ export const getPrayerTimes = async (lat: number, lng: number) => {
   } catch (e) {
     console.error(e);
     return null;
+  }
+};
+
+// --- Hadith API Functions ---
+
+export const getHadithBooks = async (): Promise<HadithBook[]> => {
+  try {
+    // API key must be encoded as it contains special characters like $
+    const response = await fetch(`${HADITH_BASE_URL}/books?apiKey=${encodeURIComponent(HADITH_API_KEY)}`);
+    if (!response.ok) throw new Error('Failed to fetch hadith books');
+    const data = await response.json();
+    return data.books || [];
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+};
+
+export const getHadithChapters = async (bookSlug: string): Promise<HadithChapter[]> => {
+  try {
+    // Modified: URL structure changed from .../books/{slug}/chapters to .../{slug}/chapters based on user correction
+    const response = await fetch(`${HADITH_BASE_URL}/${bookSlug}/chapters?apiKey=${encodeURIComponent(HADITH_API_KEY)}`);
+    if (!response.ok) throw new Error(`Failed to fetch hadith chapters for ${bookSlug}`);
+    const data = await response.json();
+    return data.chapters || [];
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+};
+
+export const getHadiths = async (bookSlug: string, chapterNumber: string): Promise<Hadith[]> => {
+  try {
+    const response = await fetch(`${HADITH_BASE_URL}/hadiths?book=${bookSlug}&chapter=${chapterNumber}&apiKey=${encodeURIComponent(HADITH_API_KEY)}`);
+    if (!response.ok) throw new Error('Failed to fetch hadiths');
+    const data = await response.json();
+    return data.hadiths?.data || data.hadiths || [];
+  } catch (error) {
+    console.error(error);
+    return [];
   }
 };

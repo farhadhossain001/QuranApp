@@ -1,3 +1,4 @@
+
 export interface Surah {
   id: number;
   revelation_place: string;
@@ -75,3 +76,38 @@ export const ARABIC_FONT_SIZES = {
   4: 'text-5xl',
   5: 'text-6xl',
 };
+
+// Hadith Interfaces
+export interface HadithBook {
+  id: number;
+  bookName: string;
+  bookSlug: string;
+  writerName: string;
+  writerDeath: string;
+  chapters_count: string;
+  hadiths_count: string;
+}
+
+export interface HadithChapter {
+  id: number;
+  chapterNumber: string;
+  chapterEnglish: string;
+  chapterUrdu: string;
+  chapterArabic: string;
+  bookSlug: string;
+}
+
+export interface Hadith {
+  id: number;
+  hadithNumber: string;
+  englishNarrator: string;
+  hadithEnglish: string;
+  hadithUrdu: string;
+  hadithArabic: string;
+  headingEnglish: string;
+  headingUrdu: string;
+  headingArabic: string;
+  bookSlug: string;
+  chapterId: string;
+  status: string;
+}

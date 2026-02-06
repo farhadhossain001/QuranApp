@@ -26,6 +26,8 @@ interface AppContextType {
   playPrevAyah: () => void;
   recentSurah: Surah | null;
   setRecentSurah: (surah: Surah) => void;
+  headerTitle: string;
+  setHeaderTitle: (title: string) => void;
   t: (key: string) => string;
   formatNumber: (num: number | string) => string;
   getSurahName: (surah: Surah) => string;
@@ -59,6 +61,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const parsed = stored ? JSON.parse(stored) : {};
     return { ...defaultSettings, ...parsed, location: parsed.location || defaultSettings.location };
   });
+
+  // Header Title State
+  const [headerTitle, setHeaderTitle] = useState("Qur'an Light");
 
   // Bookmarks State
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(() => {
@@ -201,6 +206,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         playPrevAyah,
         recentSurah,
         setRecentSurah,
+        headerTitle,
+        setHeaderTitle,
         t,
         formatNumber,
         getSurahName

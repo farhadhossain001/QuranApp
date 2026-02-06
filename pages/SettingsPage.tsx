@@ -1,15 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../context/Store';
 import { Moon, Sun, Monitor, Type, Globe, Mic, BookA, MapPin, Loader2 } from 'lucide-react';
 import { RECITERS } from '../services/api';
 
 const SettingsPage = () => {
-  const { settings, updateSettings, t } = useAppStore();
+  const { settings, updateSettings, t, setHeaderTitle } = useAppStore();
   const [detecting, setDetecting] = useState(false);
   const [manualCoords, setManualCoords] = useState({
       lat: settings.location.latitude.toString(),
       lng: settings.location.longitude.toString()
   });
+
+  useEffect(() => {
+    setHeaderTitle(t('settings'));
+  }, [t, setHeaderTitle]);
 
   const handleGetCurrentLocation = () => {
       setDetecting(true);
@@ -57,7 +61,6 @@ const SettingsPage = () => {
 
   return (
     <div className="max-w-xl mx-auto space-y-6 pb-20">
-      <h1 className="text-2xl font-bold mb-6">{t('settings')}</h1>
 
       {/* Location Settings */}
       <section className="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-gray-200 dark:border-gray-800">

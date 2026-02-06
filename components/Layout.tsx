@@ -1,9 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../context/Store';
 import { 
   Home, Bookmark, Settings, Search, Play, Pause, X, Moon, Sun, BookOpen, 
-  SkipBack, SkipForward, Repeat, Repeat1, Volume2, VolumeX, Gauge, Loader2
+  SkipBack, SkipForward, Repeat, Repeat1, Volume2, VolumeX, Gauge, Loader2, ArrowLeft
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -252,8 +252,9 @@ const AudioPlayerBar = () => {
 };
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { settings, updateSettings, t } = useAppStore();
+  const { settings, updateSettings, t, headerTitle } = useAppStore();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const toggleTheme = () => {
     updateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' });
@@ -266,16 +267,32 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { icon: <Settings size={20} />, label: t('settings'), path: '/settings' },
   ];
 
+  const isHome = location.pathname === '/';
+
   return (
     <div className="min-h-screen flex flex-col font-sans bg-background-light dark:bg-background-dark text-gray-900 dark:text-gray-100 transition-colors duration-300">
         {/* Top Header */}
         <header className="sticky top-0 z-40 w-full backdrop-blur flex-none transition-colors duration-500 lg:z-50 border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-surface-dark/95">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="py-4 flex items-center justify-between">
-                    <Link to="/" className="flex items-center gap-2 text-primary dark:text-primary-dark font-bold text-xl">
-                        <BookOpen size={24} />
-                        <span>Qur'an Light</span>
-                    </Link>
+                    {isHome ? (
+                        <Link to="/" className="flex items-center gap-2 text-primary dark:text-primary-dark font-bold text-xl">
+                            <BookOpen size={24} />
+                            <span>Qur'an Light</span>
+                        </Link>
+                    ) : (
+                        <div className="flex items-center gap-3 text-gray-900 dark:text-gray-100">
+                            <button 
+                                onClick={() => navigate(-1)} 
+                                className="p-1 -ml-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition text-gray-600 dark:text-gray-300"
+                                aria-label="Go Back"
+                            >
+                                <ArrowLeft size={24} />
+                            </button>
+                            <h1 className="font-bold text-xl truncate max-w-[200px] sm:max-w-md">{headerTitle}</h1>
+                        </div>
+                    )}
+
                     <div className="flex items-center gap-3">
                         <button 
                             onClick={toggleTheme} 

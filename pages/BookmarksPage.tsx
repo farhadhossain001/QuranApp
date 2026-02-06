@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../context/Store';
 import { Trash2, ArrowRight } from 'lucide-react';
 import { surahNamesBn } from '../utils/surahData';
 
 const BookmarksPage = () => {
-  const { bookmarks, toggleBookmark, t, formatNumber, settings } = useAppStore();
+  const { bookmarks, toggleBookmark, t, formatNumber, settings, setHeaderTitle } = useAppStore();
+
+  useEffect(() => {
+    setHeaderTitle(t('saved'));
+  }, [t, setHeaderTitle]);
 
   const getLocalizedSurahName = (name: string, number: number) => {
     if (settings.appLanguage === 'bn') {

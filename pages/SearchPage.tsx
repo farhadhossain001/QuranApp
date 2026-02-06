@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { searchVerses } from '../services/api';
@@ -9,7 +9,11 @@ const SearchPage = () => {
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
-  const { t } = useAppStore();
+  const { t, setHeaderTitle } = useAppStore();
+
+  useEffect(() => {
+    setHeaderTitle(t('searchTitle'));
+  }, [t, setHeaderTitle]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,7 +32,6 @@ const SearchPage = () => {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">{t('searchTitle')}</h1>
       
       <form onSubmit={handleSearch} className="mb-8">
         <div className="relative">

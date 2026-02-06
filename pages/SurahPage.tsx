@@ -12,9 +12,21 @@ const SurahPage = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const { settings, bookmarks, toggleBookmark, playAyah, audio, pauseAudio, resumeAudio, setRecentSurah, t, formatNumber, getSurahName } = useAppStore();
+  const { 
+    settings, bookmarks, toggleBookmark, playAyah, audio, pauseAudio, resumeAudio, 
+    setRecentSurah, t, formatNumber, getSurahName, setHeaderTitle 
+  } = useAppStore();
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Set initial title or update when Surah loads
+  useEffect(() => {
+    if (surah) {
+      setHeaderTitle(getSurahName(surah));
+    } else {
+      setHeaderTitle(t('surah'));
+    }
+  }, [surah, settings.appLanguage, t, setHeaderTitle, getSurahName]);
 
   useEffect(() => {
     const fetchSurah = async () => {
@@ -23,10 +35,12 @@ const SurahPage = () => {
       if (surahData) {
           setSurah(surahData);
           setRecentSurah(surahData);
+          // Also set header title immediately after fetch
+          setHeaderTitle(getSurahName(surahData));
       }
     };
     fetchSurah();
-  }, [id]);
+  }, [id, settings.appLanguage]); // Depend on language to refresh title if language changes
 
   useEffect(() => {
     const fetchAyahs = async () => {
