@@ -167,7 +167,6 @@ const SurahPage = () => {
                              {ayah.translations.map((tr) => (
                                  <div key={tr.id} className="border-l-2 border-gray-100 dark:border-gray-700 pl-4">
                                      <div className="text-gray-600 dark:text-gray-300 leading-relaxed font-light mb-1" 
-                                          style={{ fontFamily: 'Inter, sans-serif' }}
                                           dangerouslySetInnerHTML={{ __html: tr.text }} 
                                      />
                                      <p className="text-[10px] text-gray-400 uppercase tracking-wide">

@@ -66,6 +66,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [settings, setSettings] = useState<UserSettings>(() => {
     try {
         const stored = localStorage.getItem('quran_settings');
+        // Detect browser language if not stored
+        const browserLang = (typeof navigator !== 'undefined' && navigator.language.startsWith('bn')) ? 'bn' : 'en';
+
         // Migration: merge defaults for new properties (like location, translation ids)
         const parsed = stored ? JSON.parse(stored) : {};
         
@@ -80,13 +83,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         // Ensure merged settings have all required fields even if storage is partial or old
         return { 
             ...defaultSettings, 
-            ...parsed, 
+            appLanguage: browserLang, // Set default based on browser first
+            ...parsed, // Override with stored settings if they exist
             selectedTranslationIds: transIds || defaultSettings.selectedTranslationIds,
             location: (parsed.location && typeof parsed.location === 'object') ? parsed.location : defaultSettings.location 
         };
     } catch (e) {
         console.error("Failed to parse settings from local storage, using defaults", e);
-        return defaultSettings;
+        const browserLang = (typeof navigator !== 'undefined' && navigator.language.startsWith('bn')) ? 'bn' : 'en';
+        return { ...defaultSettings, appLanguage: browserLang };
     }
   });
 

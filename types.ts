@@ -132,3 +132,13 @@ export interface Hadith {
   textTranslation: string;
   grades: HadithGrade[];
 }
+
+// Asma-ul-Husna Interface
+export interface NameOfAllah {
+  id: number;
+  arabic: string;
+  transliteration: string;
+  translation: string; // Normalized field, API might return 'meaning' or language specific
+  meaning?: string; // Detailed meaning
+  audio?: string; // Audio URL
+}

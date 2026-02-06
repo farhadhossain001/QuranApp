@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpen, Clock, ScrollText, ArrowRight } from 'lucide-react';
+import { BookOpen, Clock, ScrollText, ArrowRight, Sparkles } from 'lucide-react';
 import { useAppStore } from '../context/Store';
 import PrayerTimesWidget from '../components/PrayerTimesWidget';
 
@@ -74,6 +75,17 @@ const HomePage = () => {
             <div>
               <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-1">{t('hadith')}</h3>
               <p className="text-xs text-gray-500 dark:text-gray-400">{t('hadithDesc')}</p>
+            </div>
+          </Link>
+
+           {/* Asma-ul-Husna Category */}
+           <Link to="/asma-ul-husna" className="group bg-white dark:bg-surface-dark p-6 rounded-2xl border border-gray-200 dark:border-gray-800 hover:border-primary dark:hover:border-primary-dark transition shadow-sm hover:shadow-md flex flex-col items-center text-center gap-4">
+            <div className="p-4 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 group-hover:bg-primary group-hover:text-white transition-colors duration-300">
+               <Sparkles size={32} />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-1">{t('asmaUlHusna')}</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{t('asmaUlHusnaDesc')}</p>
             </div>
           </Link>
 

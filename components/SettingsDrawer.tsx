@@ -5,7 +5,7 @@ import { X, Type, BookA, Mic, Globe, AlignRight, Search, Check, ChevronRight, Ar
 import { HadithEdition, TranslationResource } from '../types';
 
 interface SettingsDrawerProps {
-  type: 'surah' | 'hadith';
+  type: 'surah' | 'hadith' | 'common';
   hadithOptions?: {
     editions: HadithEdition[];
     selected: string;
@@ -128,6 +128,28 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ type, hadithOptions }) 
 
         <div className="space-y-6 overflow-y-auto flex-grow custom-scrollbar">
           
+          {/* App Language */}
+          <div className="space-y-3">
+             <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
+               <Globe size={16} />
+               {t('appLanguage')}
+             </div>
+             <div className="bg-gray-100 dark:bg-gray-800 p-1 rounded-xl flex">
+                 <button 
+                     onClick={() => updateSettings({ appLanguage: 'en' })}
+                     className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${settings.appLanguage === 'en' ? 'bg-white dark:bg-surface-dark text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                 >
+                     English
+                 </button>
+                 <button 
+                     onClick={() => updateSettings({ appLanguage: 'bn' })}
+                     className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${settings.appLanguage === 'bn' ? 'bg-white dark:bg-surface-dark text-primary shadow-sm' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                 >
+                     বাংলা
+                 </button>
+             </div>
+          </div>
+
           {/* Font Size Control (Common) */}
           <div className="space-y-3">
              <div className="flex items-center gap-2 text-sm font-medium text-gray-500">

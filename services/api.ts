@@ -1,12 +1,14 @@
 
-import { Surah, Ayah, HadithBook, HadithChapter, Hadith, TranslationResource, Reciter } from '../types';
+import { Surah, Ayah, HadithBook, HadithChapter, Hadith, TranslationResource, Reciter, NameOfAllah } from '../types';
+import { asmaData } from '../utils/asmaData';
 
 const BASE_URL = 'https://api.quran.com/api/v4';
 
 // Hadith API Configuration (New Provider)
 const HADITH_BASE_URL = 'https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1';
 
-// Removed Hardcoded RECITERS
+// Islamic API Key
+const ISLAMIC_API_KEY = '3Z7SzW1uBjvE2S0pJjmJtyHF9fYZ9ficVNL2k2p9fMxhZhlR';
 
 export const getChapters = async (): Promise<Surah[]> => {
   try {
@@ -101,11 +103,27 @@ export const getVerses = async (
   }
 };
 
+// Fetch specific Ayah Audio (Used for Fallback mechanism)
+export const getSpecificAyahAudio = async (surahId: number, ayahId: number, reciterId: number): Promise<string | null> => {
+  try {
+    const url = `${BASE_URL}/verses/by_key/${surahId}:${ayahId}?audio=${reciterId}`;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    const verse = data.verse;
+    if (verse && verse.audio && verse.audio.url) {
+         return verse.audio.url.startsWith('http') ? verse.audio.url : `https://audio.qurancdn.com/${verse.audio.url}`;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error fetching specific ayah audio:", error);
+    return null;
+  }
+};
+
 // Get Audio for a specific verse (Deprecated: Using dynamic audio from getVerses now)
-// kept for legacy fallback if needed, but updated to just return a placeholder or similar if called blindly
+// kept for legacy fallback if needed
 export const getAyahAudioUrl = (surahId: number, ayahId: number, reciterId = 7): string => {
-    // This function is largely obsolete with the new dynamic system
-    // We return empty string as we expect the Store lookup to handle audio URLs
     return ''; 
 };
 
@@ -308,3 +326,46 @@ export const getHadiths = async (bookSlug: string, sectionNumber: string, transl
     return [];
   }
 };
+
+// --- Asma-ul-Husna API ---
+
+export const getAsmaUlHusna = async (language: 'en' | 'bn'): Promise<NameOfAllah[]> => {
+    // 1. First, try to fetch from the API as per user request
+    try {
+        const url = `https://islamicapi.com/api/v1/asma-ul-husna/?language=${language}&api_key=${ISLAMIC_API_KEY}`;
+        
+        const response = await fetch(url);
+        
+        if (response.ok) {
+             const data = await response.json();
+             if (data.status === 200 && data.data) {
+                 return data.data.map((item: any, index: number) => {
+                    // Handle relative audio paths if the API returns them
+                    // Example input: "/audio/asma-ul-husna/rahman.mp3"
+                    // Target: "https://islamicapi.com/audio/asma-ul-husna/rahman.mp3"
+                    let audioUrl = item.audio;
+                    if (audioUrl && !audioUrl.startsWith('http')) {
+                        audioUrl = `https://islamicapi.com${audioUrl}`;
+                    }
+                    
+                    return {
+                        id: item.number || index + 1, // 'number' from json
+                        arabic: item.name || item.arabic, // 'name' from json
+                        transliteration: item.transliteration,
+                        translation: item.translation || item.meaning, 
+                        meaning: item.meaning,
+                        audio: audioUrl
+                    };
+                });
+             }
+        }
+        throw new Error("Primary API failed");
+    } catch (e) {
+        console.warn("API failed, switching to local fallback...", e);
+        
+        // 2. Fallback to Local Data (Robust & Fast)
+        // This ensures the page always loads, and supports Bangla specifically as requested
+        // Local data already has fully qualified audio URLs
+        return asmaData[language] || asmaData['en'];
+    }
+}

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './context/Store';
@@ -12,6 +13,7 @@ import SurahPage from './pages/SurahPage';
 import BookmarksPage from './pages/BookmarksPage';
 import SearchPage from './pages/SearchPage';
 import SettingsPage from './pages/SettingsPage';
+import AsmaUlHusnaPage from './pages/AsmaUlHusnaPage';
 
 function App() {
   return (
@@ -29,6 +31,7 @@ function App() {
             <Route path="/bookmarks" element={<BookmarksPage />} />
             <Route path="/search" element={<SearchPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/asma-ul-husna" element={<AsmaUlHusnaPage />} />
           </Routes>
         </Layout>
       </HashRouter>

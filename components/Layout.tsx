@@ -2,6 +2,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../context/Store';
+import { getSpecificAyahAudio } from '../services/api';
 import { 
   Home, Bookmark, Settings, Search, Play, Pause, X, Moon, Sun, BookOpen, 
   SkipBack, SkipForward, Repeat, Repeat1, Volume2, VolumeX, Gauge, Loader2, 
@@ -15,9 +16,12 @@ interface LayoutProps {
 const AudioPlayerBar = () => {
   const { 
     audio, pauseAudio, resumeAudio, stopAudio, 
-    playNextAyah, playPrevAyah, 
+    playNextAyah, playPrevAyah, playAyah,
     settings, updateSettings, t, formatNumber, reciters 
   } = useAppStore();
+  
+  const location = useLocation();
+  const isHome = location.pathname === '/';
   
   const audioRef = useRef<HTMLAudioElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -82,7 +86,7 @@ const AudioPlayerBar = () => {
               
               // If it's a 404/NotSupported (likely end of Surah or missing file), stop audio
               if (error.name === 'NotSupportedError' || (audioElement.error && audioElement.error.code === 4)) {
-                 stopAudio(); 
+                 // Handled in onError prop now
               }
             });
         }
@@ -139,16 +143,55 @@ const AudioPlayerBar = () => {
 
   const availableSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 
+  const handleAudioError = async (e: React.SyntheticEvent<HTMLAudioElement, Event>) => {
+      const target = e.target as HTMLAudioElement;
+      console.warn("Audio Error:", target.error?.code, target.error?.message);
+
+      // Error Code 4 is MEDIA_ERR_SRC_NOT_SUPPORTED (often 404 or bad codec)
+      // If we are NOT already on the fallback reciter (7: Mishary), try switching.
+      if (settings.reciterId !== 7 && audio.currentSurahId && audio.currentAyahId) {
+          console.log("Audio source failed, attempting auto-switch to default reciter (Mishary)...");
+          setIsLoading(true);
+          
+          try {
+              // 1. Fetch new URL for the current Ayah using default Reciter (7)
+              const newUrl = await getSpecificAyahAudio(audio.currentSurahId, audio.currentAyahId, 7);
+              
+              if (newUrl) {
+                   // 2. Update Settings so future fetches uses correct reciter
+                  updateSettings({ reciterId: 7 });
+
+                  // 3. Immediately play the new URL
+                  // playAyah updates the store's audioUrl, triggering the useEffect to load/play
+                  playAyah(audio.currentSurahId, audio.currentAyahId, newUrl);
+              } else {
+                  // Fallback failed
+                  setIsLoading(false);
+                  stopAudio();
+              }
+          } catch (err) {
+              console.error("Auto-switch failed", err);
+              setIsLoading(false);
+              stopAudio();
+          }
+      } else {
+          // Already on fallback or other error
+          setIsLoading(false);
+          stopAudio();
+      }
+  };
+
   if (!audio.audioUrl) return null;
 
   return (
     <>
-      {/* Invisible Backdrop for menus */}
+      {/* Invisible Backdrop for menus - Z-Index 55 */}
       {(showSpeedMenu || showReciterMenu) && (
-          <div className="fixed inset-0 z-[55] bg-transparent" onClick={closeMenus} />
+          <div className="fixed inset-0 z-[55] bg-black/5" onClick={closeMenus} />
       )}
 
-      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-white dark:bg-surface-dark border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50 animate-slide-up transition-all duration-300">
+      {/* Audio Player Bar - Z-Index 60 (Must be higher than backdrop) */}
+      <div className={`fixed ${isHome ? 'bottom-16' : 'bottom-0 pb-safe'} md:bottom-0 left-0 right-0 bg-white dark:bg-surface-dark border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-[60] animate-slide-up transition-all duration-300`}>
         <audio 
           ref={audioRef} 
           preload="auto"
@@ -160,12 +203,7 @@ const AudioPlayerBar = () => {
           onEnded={handleEnded}
           onPause={() => { if (audio.isPlaying) pauseAudio(); }}
           onPlay={() => { if (!audio.isPlaying) resumeAudio(); }}
-          onError={(e) => {
-            const target = e.target as HTMLAudioElement;
-            console.error("Audio error:", target.error?.message || "Unknown error", target.error?.code);
-            setIsLoading(false);
-            stopAudio();
-          }}
+          onError={handleAudioError}
         />
 
         {/* Progress Bar (Full Width Top) */}
@@ -217,7 +255,7 @@ const AudioPlayerBar = () => {
 
                 {/* Reciter Menu Popover */}
                 {showReciterMenu && (
-                    <div className="absolute bottom-full left-0 mb-3 w-72 bg-white dark:bg-surface-dark rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-[60] animate-fade-in flex flex-col max-h-[60vh] sm:max-h-80">
+                    <div className="absolute bottom-full left-0 mb-3 w-72 bg-white dark:bg-surface-dark rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col max-h-[60vh] sm:max-h-80 animate-fade-in">
                          <div className="p-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0">
                              <input 
                                 type="text"
@@ -234,7 +272,8 @@ const AudioPlayerBar = () => {
                                  return (
                                      <button
                                         key={reciter.id}
-                                        onClick={() => {
+                                        onClick={(e) => {
+                                            e.stopPropagation();
                                             updateSettings({ reciterId: reciter.id });
                                             setShowReciterMenu(false);
                                         }}
@@ -273,11 +312,12 @@ const AudioPlayerBar = () => {
 
                 {/* Speed Menu Popover */}
                 {showSpeedMenu && (
-                    <div className="absolute bottom-full left-0 mb-3 w-24 bg-white dark:bg-surface-dark rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-[60] animate-fade-in py-1">
+                    <div className="absolute bottom-full left-0 mb-3 w-24 bg-white dark:bg-surface-dark rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-fade-in py-1">
                         {availableSpeeds.map(speed => (
                             <button
                                 key={speed}
-                                onClick={() => {
+                                onClick={(e) => {
+                                    e.stopPropagation();
                                     updateSettings({ playbackRate: speed });
                                     setShowSpeedMenu(false);
                                 }}
@@ -374,37 +414,68 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const isHome = location.pathname === '/';
   // Check if we should show the Page Settings icon
-  const showPageSettings = location.pathname.startsWith('/surah/') || location.pathname.startsWith('/hadith/');
+  const showPageSettings = location.pathname.startsWith('/surah/') || location.pathname.startsWith('/hadith/') || location.pathname === '/asma-ul-husna';
   
   // Calculate bottom padding for mobile
-  // Always include Nav height (pb-24) + Audio height if playing (approx +16/4rem)
-  const mobilePadding = audio.audioUrl ? 'pb-40' : 'pb-24';
+  let mobilePadding = 'pb-6'; // Default minimal padding
+  if (isHome) {
+      // Home: Nav exists (h-16). If audio, Player sits on top.
+      mobilePadding = audio.audioUrl ? 'pb-40' : 'pb-24';
+  } else {
+      // Not Home: No Nav. If audio, Player sits at bottom (approx h-20 with controls).
+      mobilePadding = audio.audioUrl ? 'pb-28' : 'pb-6';
+  }
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-background-light dark:bg-background-dark text-gray-900 dark:text-gray-100 transition-colors duration-300">
         {/* Top Header */}
         <header className="sticky top-0 z-40 w-full backdrop-blur flex-none transition-colors duration-500 lg:z-50 border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-surface-dark/95">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="py-4 flex items-center justify-between">
-                    {isHome ? (
-                        <Link to="/" className="flex items-center gap-2 text-primary dark:text-primary-dark font-bold text-xl">
-                            <BookOpen size={24} />
-                            <span>Qur'an Light</span>
-                        </Link>
-                    ) : (
-                        <div className="flex items-center gap-3 text-gray-900 dark:text-gray-100">
-                            <button 
-                                onClick={() => navigate(-1)} 
-                                className="p-1 -ml-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition text-gray-600 dark:text-gray-300"
-                                aria-label="Go Back"
-                            >
-                                <ArrowLeft size={24} />
-                            </button>
-                            <h1 className="font-bold text-xl truncate max-w-[200px] sm:max-w-md">{headerTitle}</h1>
-                        </div>
-                    )}
+                <div className="py-4 flex items-center justify-between gap-4">
+                    {/* Left Side: Logo or Back/Title */}
+                    <div className="flex items-center gap-3 flex-shrink-0 min-w-0">
+                        {isHome ? (
+                            <Link to="/" className="flex items-center gap-2 text-primary dark:text-primary-dark font-bold text-xl">
+                                <BookOpen size={24} />
+                                <span>Qur'an Light</span>
+                            </Link>
+                        ) : (
+                            <div className="flex items-center gap-3 text-gray-900 dark:text-gray-100 min-w-0">
+                                <button 
+                                    onClick={() => navigate(-1)} 
+                                    className="p-1 -ml-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition text-gray-600 dark:text-gray-300 flex-shrink-0"
+                                    aria-label="Go Back"
+                                >
+                                    <ArrowLeft size={24} />
+                                </button>
+                                <h1 className="font-bold text-xl truncate">{headerTitle}</h1>
+                            </div>
+                        )}
+                    </div>
 
-                    <div className="flex items-center gap-3">
+                    {/* Desktop Navigation */}
+                    <nav className="hidden md:flex items-center gap-1 bg-gray-100/80 dark:bg-gray-800/80 p-1.5 rounded-full border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm">
+                        {navItems.map((item) => {
+                            const isActive = location.pathname === item.path;
+                            return (
+                                <Link 
+                                    key={item.path} 
+                                    to={item.path}
+                                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                                        isActive 
+                                        ? 'bg-white dark:bg-surface-dark text-primary dark:text-primary-dark shadow-sm ring-1 ring-black/5 dark:ring-white/5' 
+                                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
+                                    }`}
+                                >
+                                    {React.cloneElement(item.icon as React.ReactElement<any>, { size: 16 })}
+                                    <span>{item.label}</span>
+                                </Link>
+                            );
+                        })}
+                    </nav>
+
+                    {/* Right Side: Actions */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
                         {/* Page Settings Toggle */}
                         {showPageSettings && (
                             <button 
@@ -423,13 +494,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         >
                              {settings.theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
                         </button>
-                        <Link 
-                            to="/settings"
-                            className="hidden md:block p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition"
-                            aria-label="Settings"
-                        >
-                            <Settings size={20} />
-                        </Link>
                     </div>
                 </div>
             </div>
@@ -443,24 +507,26 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Audio Player */}
         <AudioPlayerBar />
 
-        {/* Mobile Bottom Nav - Always visible */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-surface-dark border-t border-gray-200 dark:border-gray-800 z-40 pb-safe">
-            <div className="flex justify-around items-center h-16">
-                {navItems.map((item) => {
-                    const isActive = location.pathname === item.path;
-                    return (
-                        <Link 
-                            key={item.path} 
-                            to={item.path}
-                            className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? 'text-primary dark:text-primary-dark' : 'text-gray-500 dark:text-gray-400'}`}
-                        >
-                            {item.icon}
-                            <span className="text-[10px] font-medium">{item.label}</span>
-                        </Link>
-                    );
-                })}
-            </div>
-        </nav>
+        {/* Mobile Bottom Nav - Conditionally rendered only on Home for Mobile */}
+        {isHome && (
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-surface-dark border-t border-gray-200 dark:border-gray-800 z-40 pb-safe">
+                <div className="flex justify-around items-center h-16">
+                    {navItems.map((item) => {
+                        const isActive = location.pathname === item.path;
+                        return (
+                            <Link 
+                                key={item.path} 
+                                to={item.path}
+                                className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? 'text-primary dark:text-primary-dark' : 'text-gray-500 dark:text-gray-400'}`}
+                            >
+                                {item.icon}
+                                <span className="text-[10px] font-medium">{item.label}</span>
+                            </Link>
+                        );
+                    })}
+                </div>
+            </nav>
+        )}
     </div>
   );
 };

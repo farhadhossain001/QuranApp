@@ -89,6 +89,9 @@ export const translations: Record<string, Record<string, string>> = {
     hadithDesc: 'Sayings of Prophet Muhammad (PBUH)',
     comingSoon: 'Coming Soon',
     narratedBy: 'Narrated by',
+    // Asma-ul-Husna
+    asmaUlHusna: 'Asma-ul-Husna',
+    asmaUlHusnaDesc: 'The 99 Beautiful Names of Allah',
   },
   bn: {
     home: 'হোম',
@@ -179,5 +182,8 @@ export const translations: Record<string, Record<string, string>> = {
     hadithDesc: 'নবী করীম (সাঃ) এর বাণী',
     comingSoon: 'শীঘ্রই আসছে',
     narratedBy: 'বর্ণনাকারী',
+    // Asma-ul-Husna
+    asmaUlHusna: 'আসমা-উল-হুসনা',
+    asmaUlHusnaDesc: 'আল্লাহর ৯৯টি গুণবাচক নাম',
   }
 };
