@@ -20,6 +20,28 @@ export interface Translation {
   text: string;
 }
 
+export interface TranslationResource {
+  id: number;
+  name: string;
+  author_name: string;
+  slug: string;
+  language_name: string;
+  translated_name: {
+    name: string;
+    language_name: string;
+  };
+}
+
+export interface Reciter {
+  id: number;
+  reciter_name: string;
+  style: string;
+  translated_name: {
+    name: string;
+    language_name: string;
+  };
+}
+
 export interface AudioFile {
   url: string;
   duration?: number;
@@ -50,7 +72,7 @@ export interface UserSettings {
   showTransliteration: boolean;
   reciterId: number;
   appLanguage: 'en' | 'bn';
-  translationMode: 'en' | 'bn' | 'both'; // Controls which translations to show
+  selectedTranslationIds: number[]; // Array of resource IDs (e.g. [20, 131])
   location: {
     latitude: number;
     longitude: number;

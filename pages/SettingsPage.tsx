@@ -1,11 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../context/Store';
-import { Moon, Sun, Monitor, Type, Globe, Mic, BookA, MapPin, Loader2 } from 'lucide-react';
-import { RECITERS } from '../services/api';
+import { Moon, Sun, Monitor, Type, Globe, Mic, BookA, MapPin, Loader2, ArrowRight } from 'lucide-react';
 
 const SettingsPage = () => {
-  const { settings, updateSettings, t, setHeaderTitle } = useAppStore();
+  const { settings, updateSettings, t, setHeaderTitle, reciters } = useAppStore();
   const [detecting, setDetecting] = useState(false);
   const [manualCoords, setManualCoords] = useState({
       lat: settings.location.latitude.toString(),
@@ -134,31 +133,14 @@ const SettingsPage = () => {
         </div>
       </section>
 
-      {/* Translation Content Language */}
+      {/* Translation - Redirect hint */}
       <section className="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-gray-200 dark:border-gray-800">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <BookA size={20} className="text-primary" />
             {t('translationLanguage')}
         </h2>
-        <div className="grid grid-cols-3 gap-2">
-            <button 
-                onClick={() => updateSettings({ translationMode: 'en' })}
-                className={`p-3 rounded-xl border text-sm font-medium transition ${settings.translationMode === 'en' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-            >
-                {t('english')}
-            </button>
-            <button 
-                onClick={() => updateSettings({ translationMode: 'bn' })}
-                className={`p-3 rounded-xl border text-sm font-medium transition ${settings.translationMode === 'bn' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-            >
-                {t('bangla')}
-            </button>
-             <button 
-                onClick={() => updateSettings({ translationMode: 'both' })}
-                className={`p-3 rounded-xl border text-sm font-medium transition ${settings.translationMode === 'both' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-            >
-                {t('both')}
-            </button>
+        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl text-sm text-gray-600 dark:text-gray-300">
+             To manage specific translations, open a Surah and use the Settings icon in the top right.
         </div>
       </section>
 
@@ -173,11 +155,15 @@ const SettingsPage = () => {
             onChange={(e) => updateSettings({ reciterId: parseInt(e.target.value) })}
             className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/50"
         >
-            {RECITERS.map((reciter) => (
-                <option key={reciter.id} value={reciter.id}>
-                    {reciter.name}
-                </option>
-            ))}
+            {reciters.length > 0 ? (
+                reciters.map((reciter) => (
+                    <option key={reciter.id} value={reciter.id}>
+                        {reciter.reciter_name} {reciter.style ? `(${reciter.style})` : ''}
+                    </option>
+                ))
+            ) : (
+                <option value={7}>Mishary Rashid Al-Afasy</option>
+            )}
         </select>
       </section>
 

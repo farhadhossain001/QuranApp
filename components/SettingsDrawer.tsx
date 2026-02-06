@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAppStore } from '../context/Store';
-import { X, Type, BookA, Mic, Globe, AlignRight } from 'lucide-react';
-import { RECITERS } from '../services/api';
-import { HadithEdition } from '../types';
+import { X, Type, BookA, Mic, Globe, AlignRight, Search, Check, ChevronRight, ArrowLeft } from 'lucide-react';
+import { HadithEdition, TranslationResource } from '../types';
 
 interface SettingsDrawerProps {
   type: 'surah' | 'hadith';
@@ -15,8 +14,13 @@ interface SettingsDrawerProps {
 }
 
 const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ type, hadithOptions }) => {
-  const { isSettingsDrawerOpen, setSettingsDrawerOpen, settings, updateSettings, t } = useAppStore();
+  const { isSettingsDrawerOpen, setSettingsDrawerOpen, settings, updateSettings, t, availableTranslations, reciters } = useAppStore();
   const [isVisible, setIsVisible] = useState(false);
+  const [translationSearch, setTranslationSearch] = useState('');
+  
+  // Navigation State for Translation Selection
+  const [selectionView, setSelectionView] = useState<'languages' | 'translators'>('languages');
+  const [activeLanguage, setActiveLanguage] = useState<string | null>(null);
 
   useEffect(() => {
     if (isSettingsDrawerOpen) {
@@ -26,6 +30,71 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ type, hadithOptions }) 
       return () => clearTimeout(timer);
     }
   }, [isSettingsDrawerOpen]);
+
+  // Reset view when closing
+  useEffect(() => {
+      if (!isSettingsDrawerOpen) {
+          setTimeout(() => {
+              setSelectionView('languages');
+              setActiveLanguage(null);
+              setTranslationSearch('');
+          }, 300);
+      }
+  }, [isSettingsDrawerOpen]);
+
+  const toggleTranslation = (id: number) => {
+      let current = [...settings.selectedTranslationIds];
+      if (current.includes(id)) {
+          current = current.filter(x => x !== id);
+      } else {
+          current.push(id);
+      }
+      updateSettings({ selectedTranslationIds: current });
+  };
+
+  // Group translations by language
+  const translationsByLanguage = useMemo(() => {
+      const groups: Record<string, TranslationResource[]> = {};
+      availableTranslations.forEach(tr => {
+          const lang = tr.language_name; // e.g., "English", "Bengali"
+          if (!groups[lang]) groups[lang] = [];
+          groups[lang].push(tr);
+      });
+      return groups;
+  }, [availableTranslations]);
+
+  const sortedLanguages = useMemo(() => {
+      return Object.keys(translationsByLanguage).sort();
+  }, [translationsByLanguage]);
+
+  // Filter Logic
+  const filteredItems = useMemo(() => {
+      const search = translationSearch.toLowerCase();
+      
+      if (selectionView === 'languages') {
+          return sortedLanguages.filter(lang => 
+              lang.toLowerCase().includes(search)
+          );
+      } else if (selectionView === 'translators' && activeLanguage) {
+          return (translationsByLanguage[activeLanguage] || []).filter(tr => 
+              tr.name.toLowerCase().includes(search) || 
+              tr.author_name.toLowerCase().includes(search)
+          );
+      }
+      return [];
+  }, [selectionView, activeLanguage, translationSearch, sortedLanguages, translationsByLanguage]);
+
+  const handleLanguageSelect = (lang: string) => {
+      setActiveLanguage(lang);
+      setSelectionView('translators');
+      setTranslationSearch(''); // Clear search when diving in
+  };
+
+  const handleBackToLanguages = () => {
+      setSelectionView('languages');
+      setActiveLanguage(null);
+      setTranslationSearch('');
+  };
 
   if (!isVisible) return null;
 
@@ -42,13 +111,12 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ type, hadithOptions }) 
       
       {/* Drawer */}
       <div 
-        className={`w-full max-w-lg bg-white dark:bg-surface-dark rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 pb-safe overflow-hidden relative z-10 max-h-[85vh] overflow-y-auto ${drawerAnimation}`}
+        className={`w-full max-w-lg bg-white dark:bg-surface-dark rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 pb-safe overflow-hidden relative z-10 max-h-[85vh] flex flex-col ${drawerAnimation}`}
         style={{ transformOrigin: 'bottom' }}
       >
-        <div className="space-y-6">
           
           {/* Header */}
-          <div className="flex justify-between items-center mb-2 sticky top-0 bg-white dark:bg-surface-dark z-20 pb-2 border-b border-transparent">
+          <div className="flex justify-between items-center mb-4 flex-shrink-0">
             <h3 className="text-lg font-bold">{t('settings')}</h3>
             <button 
               onClick={() => setSettingsDrawerOpen(false)}
@@ -58,6 +126,8 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ type, hadithOptions }) 
             </button>
           </div>
 
+        <div className="space-y-6 overflow-y-auto flex-grow custom-scrollbar">
+          
           {/* Font Size Control (Common) */}
           <div className="space-y-3">
              <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
@@ -110,34 +180,6 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ type, hadithOptions }) 
           {/* SURAH SPECIFIC */}
           {type === 'surah' && (
             <>
-              {/* Translation Language */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                   <Globe size={16} />
-                   {t('translationLanguage')}
-                </div>
-                <div className="grid grid-cols-3 gap-2">
-                    <button 
-                        onClick={() => updateSettings({ translationMode: 'en' })}
-                        className={`p-2 rounded-lg border text-sm font-medium transition ${settings.translationMode === 'en' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 dark:border-gray-700'}`}
-                    >
-                        {t('english')}
-                    </button>
-                    <button 
-                        onClick={() => updateSettings({ translationMode: 'bn' })}
-                        className={`p-2 rounded-lg border text-sm font-medium transition ${settings.translationMode === 'bn' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 dark:border-gray-700'}`}
-                    >
-                        {t('bangla')}
-                    </button>
-                     <button 
-                        onClick={() => updateSettings({ translationMode: 'both' })}
-                        className={`p-2 rounded-lg border text-sm font-medium transition ${settings.translationMode === 'both' ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 dark:border-gray-700'}`}
-                    >
-                        {t('both')}
-                    </button>
-                </div>
-              </div>
-
               {/* Reciter */}
               <div className="space-y-3">
                  <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
@@ -149,12 +191,123 @@ const SettingsDrawer: React.FC<SettingsDrawerProps> = ({ type, hadithOptions }) 
                     onChange={(e) => updateSettings({ reciterId: parseInt(e.target.value) })}
                     className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                 >
-                    {RECITERS.map((reciter) => (
-                        <option key={reciter.id} value={reciter.id}>
-                            {reciter.name}
-                        </option>
-                    ))}
+                    {reciters.length > 0 ? (
+                        reciters.map((reciter) => (
+                            <option key={reciter.id} value={reciter.id}>
+                                {reciter.reciter_name} {reciter.style ? `(${reciter.style})` : ''}
+                            </option>
+                        ))
+                    ) : (
+                         <option value={7}>Mishary Rashid Al-Afasy</option>
+                    )}
                 </select>
+              </div>
+
+              {/* Translation Selection */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
+                        <Globe size={16} />
+                        {t('translationLanguage')}
+                    </div>
+                    {selectionView === 'translators' && (
+                         <button 
+                            onClick={handleBackToLanguages}
+                            className="text-xs text-primary flex items-center gap-1 hover:underline"
+                         >
+                             <ArrowLeft size={12} />
+                             Back to Languages
+                         </button>
+                    )}
+                </div>
+                
+                {/* Search */}
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input 
+                        type="text"
+                        placeholder={selectionView === 'languages' ? "Search languages..." : `Search ${activeLanguage} translators...`}
+                        value={translationSearch}
+                        onChange={(e) => setTranslationSearch(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 text-sm rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                </div>
+
+                {/* List Container */}
+                <div className="h-48 overflow-y-auto border border-gray-100 dark:border-gray-800 rounded-xl bg-gray-50/50 dark:bg-gray-800/50 p-2 space-y-1">
+                    
+                    {/* View: Languages List */}
+                    {selectionView === 'languages' && (
+                        <>
+                            {filteredItems.length === 0 ? (
+                                <div className="text-center text-xs text-gray-400 py-4">No languages found</div>
+                            ) : (
+                                (filteredItems as string[]).map(lang => {
+                                    // Count selected in this language
+                                    const count = (translationsByLanguage[lang] || []).filter(tr => 
+                                        settings.selectedTranslationIds.includes(tr.id)
+                                    ).length;
+
+                                    return (
+                                        <div 
+                                            key={lang} 
+                                            onClick={() => handleLanguageSelect(lang)}
+                                            className="flex items-center justify-between p-3 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition text-sm group"
+                                        >
+                                            <span className="font-medium text-gray-900 dark:text-gray-100">{lang}</span>
+                                            <div className="flex items-center gap-2">
+                                                {count > 0 && (
+                                                    <span className="bg-primary text-white text-[10px] px-2 py-0.5 rounded-full">
+                                                        {count} selected
+                                                    </span>
+                                                )}
+                                                <ChevronRight size={16} className="text-gray-400 group-hover:text-gray-600" />
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </>
+                    )}
+
+                    {/* View: Translators List */}
+                    {selectionView === 'translators' && activeLanguage && (
+                         <>
+                            {filteredItems.length === 0 ? (
+                                <div className="text-center text-xs text-gray-400 py-4">No translators found</div>
+                            ) : (
+                                (filteredItems as TranslationResource[]).map(tr => {
+                                    const isSelected = settings.selectedTranslationIds.includes(tr.id);
+                                    return (
+                                        <div 
+                                            key={tr.id} 
+                                            onClick={() => toggleTranslation(tr.id)}
+                                            className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition text-sm ${isSelected ? 'bg-primary/10 border-primary/20' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                                        >
+                                            <div className="flex-1">
+                                                <p className={`font-medium ${isSelected ? 'text-primary dark:text-primary-dark' : 'text-gray-900 dark:text-gray-100'}`}>
+                                                    {tr.name}
+                                                </p>
+                                                {tr.author_name !== tr.name && (
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                                        {tr.author_name}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            {isSelected && <Check size={16} className="text-primary" />}
+                                        </div>
+                                    );
+                                })
+                            )}
+                         </>
+                    )}
+
+                </div>
+                {selectionView === 'languages' ? (
+                     <p className="text-[10px] text-gray-400 text-center">Select a language to view translators.</p>
+                ) : (
+                     <p className="text-[10px] text-gray-400 text-center">Select multiple translators to view them side-by-side.</p>
+                )}
               </div>
             </>
           )}

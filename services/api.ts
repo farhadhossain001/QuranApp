@@ -1,23 +1,12 @@
 
-import { Surah, Ayah, HadithBook, HadithChapter, Hadith } from '../types';
+import { Surah, Ayah, HadithBook, HadithChapter, Hadith, TranslationResource, Reciter } from '../types';
 
 const BASE_URL = 'https://api.quran.com/api/v4';
 
 // Hadith API Configuration (New Provider)
 const HADITH_BASE_URL = 'https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1';
 
-// Translation IDs: 
-// 161: Bangla (Dr. Abu Bakr Muhammad Zakaria)
-// 131: Bangla (Taisirul Quran)
-// 20: English (Saheeh International)
-const TRANSLATION_IDS = '161,131,20';
-
-export const RECITERS = [
-  { id: 7, name: 'Abdul Basit (Murattal)', path: 'Abdul_Basit_Murattal_64kbps' },
-  { id: 2, name: 'Mishari Rashid al-Afasy', path: 'Alafasy_64kbps' },
-  { id: 1, name: 'Mahmoud Khalil Al-Hussary', path: 'Husary_64kbps' },
-  { id: 4, name: 'Abu Bakr al-Shatri', path: 'Abu_Bakr_Ash-Shaatree_128kbps' },
-];
+// Removed Hardcoded RECITERS
 
 export const getChapters = async (): Promise<Surah[]> => {
   try {
@@ -43,19 +32,67 @@ export const getChapterInfo = async (id: number): Promise<Surah | null> => {
   }
 };
 
-// Getting verses with audio and translations
-export const getVerses = async (chapterId: number, page = 1, limit = 20): Promise<{ verses: Ayah[], total_pages: number } | null> => {
+// Fetch available translations
+export const getAvailableTranslations = async (): Promise<TranslationResource[]> => {
+    try {
+        const response = await fetch(`${BASE_URL}/resources/translations`);
+        if (!response.ok) throw new Error('Failed to fetch translations');
+        const data = await response.json();
+        return data.translations;
+    } catch (error) {
+        console.error(error);
+        return [];
+    }
+};
+
+// Fetch available reciters
+export const getReciters = async (): Promise<Reciter[]> => {
+    try {
+        const response = await fetch(`${BASE_URL}/resources/recitations`);
+        if (!response.ok) throw new Error('Failed to fetch recitations');
+        const data = await response.json();
+        return data.recitations;
+    } catch (error) {
+        console.error(error);
+        return [];
+    }
+};
+
+// Getting verses with audio and dynamic translations
+export const getVerses = async (
+    chapterId: number, 
+    page = 1, 
+    limit = 20, 
+    translationIds: number[] = [20],
+    reciterId: number = 7 // Default Mishary (7)
+): Promise<{ verses: Ayah[], total_pages: number } | null> => {
   try {
-    // We request audio_url as well to simplify things, though strictly the API structure separates them often.
-    // Using `fields` to get text_uthmani
-    const url = `${BASE_URL}/verses/by_chapter/${chapterId}?language=en&words=false&translations=${TRANSLATION_IDS}&page=${page}&per_page=${limit}&fields=text_uthmani`;
+    const translationsParam = translationIds.length > 0 ? translationIds.join(',') : '20';
+    
+    // Request audio by passing `audio={reciterId}`
+    const url = `${BASE_URL}/verses/by_chapter/${chapterId}?language=en&words=false&translations=${translationsParam}&audio=${reciterId}&page=${page}&per_page=${limit}&fields=text_uthmani`;
     
     const response = await fetch(url);
     if (!response.ok) throw new Error('Failed to fetch verses');
     const data = await response.json();
     
+    // Transform Response to standard Ayah format with full audio URL
+    const verses: Ayah[] = data.verses.map((v: any) => {
+        let audioUrl = '';
+        if (v.audio && v.audio.url) {
+            audioUrl = v.audio.url.startsWith('http') ? v.audio.url : `https://audio.qurancdn.com/${v.audio.url}`;
+        }
+
+        return {
+            ...v,
+            audio: {
+                url: audioUrl
+            }
+        };
+    });
+
     return {
-      verses: data.verses,
+      verses: verses,
       total_pages: data.pagination.total_pages
     };
   } catch (error) {
@@ -64,14 +101,12 @@ export const getVerses = async (chapterId: number, page = 1, limit = 20): Promis
   }
 };
 
-// Get Audio for a specific verse (using the recital endpoint specific for ayahs)
+// Get Audio for a specific verse (Deprecated: Using dynamic audio from getVerses now)
+// kept for legacy fallback if needed, but updated to just return a placeholder or similar if called blindly
 export const getAyahAudioUrl = (surahId: number, ayahId: number, reciterId = 7): string => {
-  const reciter = RECITERS.find(r => r.id === reciterId) || RECITERS[0];
-  const formattedSurah = surahId.toString().padStart(3, '0');
-  const formattedAyah = ayahId.toString().padStart(3, '0');
-  
-  // Using EveryAyah for reliable audio source
-  return `https://everyayah.com/data/${reciter.path}/${formattedSurah}${formattedAyah}.mp3`;
+    // This function is largely obsolete with the new dynamic system
+    // We return empty string as we expect the Store lookup to handle audio URLs
+    return ''; 
 };
 
 // Search

@@ -4,7 +4,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../context/Store';
 import { 
   Home, Bookmark, Settings, Search, Play, Pause, X, Moon, Sun, BookOpen, 
-  SkipBack, SkipForward, Repeat, Repeat1, Volume2, VolumeX, Gauge, Loader2, ArrowLeft, SlidersHorizontal
+  SkipBack, SkipForward, Repeat, Repeat1, Volume2, VolumeX, Gauge, Loader2, 
+  ArrowLeft, SlidersHorizontal, Mic, Check, ChevronUp
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -15,7 +16,7 @@ const AudioPlayerBar = () => {
   const { 
     audio, pauseAudio, resumeAudio, stopAudio, 
     playNextAyah, playPrevAyah, 
-    settings, updateSettings, t, formatNumber 
+    settings, updateSettings, t, formatNumber, reciters 
   } = useAppStore();
   
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -23,6 +24,17 @@ const AudioPlayerBar = () => {
   const [duration, setDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Menu States
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [showReciterMenu, setShowReciterMenu] = useState(false);
+  const [reciterSearch, setReciterSearch] = useState('');
+
+  // Close menus on click outside (simple backdrop approach)
+  const closeMenus = () => {
+      setShowSpeedMenu(false);
+      setShowReciterMenu(false);
+  };
 
   // Sync Audio Element Props with Settings
   useEffect(() => {
@@ -65,7 +77,7 @@ const AudioPlayerBar = () => {
               // Ignore AbortError which happens when skipping tracks quickly
               if (error.name === 'AbortError') return;
               
-              console.error("Audio playback error:", error);
+              console.error("Audio playback interrupted", error);
               setIsLoading(false);
               
               // If it's a 404/NotSupported (likely end of Surah or missing file), stop audio
@@ -112,13 +124,6 @@ const AudioPlayerBar = () => {
     }
   };
 
-  const toggleSpeed = () => {
-    const speeds = [0.75, 1.0, 1.25, 1.5, 2.0];
-    const currentIndex = speeds.indexOf(settings.playbackRate);
-    const nextSpeed = speeds[(currentIndex + 1) % speeds.length];
-    updateSettings({ playbackRate: nextSpeed });
-  };
-
   const toggleRepeat = () => {
     const modes: ('none' | 'one' | 'all')[] = ['none', 'all', 'one'];
     const currentIndex = modes.indexOf(settings.repeatMode);
@@ -126,129 +131,228 @@ const AudioPlayerBar = () => {
     updateSettings({ repeatMode: nextMode });
   };
 
+  // Filter reciters
+  const filteredReciters = reciters.filter(r => 
+      r.reciter_name.toLowerCase().includes(reciterSearch.toLowerCase()) ||
+      r.style.toLowerCase().includes(reciterSearch.toLowerCase())
+  );
+
+  const availableSpeeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+
   if (!audio.audioUrl) return null;
 
   return (
-    <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-white dark:bg-surface-dark border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50 animate-slide-up transition-all duration-300">
-      <audio 
-        ref={audioRef} 
-        preload="auto"
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onWaiting={() => setIsLoading(true)}
-        onCanPlay={() => setIsLoading(false)}
-        onPlaying={() => setIsLoading(false)}
-        onEnded={handleEnded}
-        onPause={() => { if (audio.isPlaying) pauseAudio(); }}
-        onPlay={() => { if (!audio.isPlaying) resumeAudio(); }}
-        onError={(e) => {
-          console.error("Audio error event:", e);
-          setIsLoading(false);
-          stopAudio();
-        }}
-      />
+    <>
+      {/* Invisible Backdrop for menus */}
+      {(showSpeedMenu || showReciterMenu) && (
+          <div className="fixed inset-0 z-[55] bg-transparent" onClick={closeMenus} />
+      )}
 
-      {/* Progress Bar (Full Width Top) */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700 cursor-pointer group">
-        <div 
-          className="h-full bg-primary relative transition-all duration-100 ease-linear" 
-          style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
-        >
-          <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-primary rounded-full opacity-0 group-hover:opacity-100 transition shadow" />
-        </div>
-        <input 
-          type="range" 
-          min="0" 
-          max={duration || 0} 
-          value={currentTime} 
-          onChange={handleSeek}
-          className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
+      <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-white dark:bg-surface-dark border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-50 animate-slide-up transition-all duration-300">
+        <audio 
+          ref={audioRef} 
+          preload="auto"
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onWaiting={() => setIsLoading(true)}
+          onCanPlay={() => setIsLoading(false)}
+          onPlaying={() => setIsLoading(false)}
+          onEnded={handleEnded}
+          onPause={() => { if (audio.isPlaying) pauseAudio(); }}
+          onPlay={() => { if (!audio.isPlaying) resumeAudio(); }}
+          onError={(e) => {
+            const target = e.target as HTMLAudioElement;
+            console.error("Audio error:", target.error?.message || "Unknown error", target.error?.code);
+            setIsLoading(false);
+            stopAudio();
+          }}
         />
-      </div>
 
-      <div className="max-w-5xl mx-auto p-3 flex items-center justify-between gap-4">
-        
-        {/* Left: Info & Speed */}
-        <div className="flex items-center gap-4 flex-1 min-w-0">
-          <div className="hidden sm:flex flex-col min-w-0">
-             <span className="text-sm font-semibold truncate text-gray-900 dark:text-gray-100">
-               {t('surah')} {formatNumber(audio.currentSurahId || 0)} : {t('ayah')} {formatNumber(audio.currentAyahId || 0)}
-             </span>
-             <span className="text-xs text-gray-500 font-mono">
-               {formatTime(currentTime)} / {formatTime(duration)}
-             </span>
+        {/* Progress Bar (Full Width Top) */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gray-200 dark:bg-gray-700 cursor-pointer group">
+          <div 
+            className="h-full bg-primary relative transition-all duration-100 ease-linear" 
+            style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
+          >
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-primary rounded-full opacity-0 group-hover:opacity-100 transition shadow" />
+          </div>
+          <input 
+            type="range" 
+            min="0" 
+            max={duration || 0} 
+            value={currentTime} 
+            onChange={handleSeek}
+            className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
+          />
+        </div>
+
+        <div className="max-w-5xl mx-auto p-3 flex items-center justify-between gap-4">
+          
+          {/* Left: Info & Controls */}
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            <div className="hidden sm:flex flex-col min-w-0">
+               <span className="text-sm font-semibold truncate text-gray-900 dark:text-gray-100">
+                 {t('surah')} {formatNumber(audio.currentSurahId || 0)} : {t('ayah')} {formatNumber(audio.currentAyahId || 0)}
+               </span>
+               <span className="text-xs text-gray-500 font-mono">
+                 {formatTime(currentTime)} / {formatTime(duration)}
+               </span>
+            </div>
+
+            {/* Reciter Selector */}
+            <div className="relative">
+                <button 
+                  onClick={() => {
+                      setShowReciterMenu(!showReciterMenu);
+                      setShowSpeedMenu(false);
+                  }}
+                  className={`flex items-center gap-1 text-xs font-medium transition px-2 py-1 rounded ${showReciterMenu ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-primary'}`}
+                  title={t('reciter')}
+                >
+                  <Mic size={14} />
+                  <span className="hidden lg:inline max-w-[80px] truncate">
+                      {reciters.find(r => r.id === settings.reciterId)?.reciter_name || 'Reciter'}
+                  </span>
+                </button>
+
+                {/* Reciter Menu Popover */}
+                {showReciterMenu && (
+                    <div className="absolute bottom-full left-0 mb-3 w-72 bg-white dark:bg-surface-dark rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-[60] animate-fade-in flex flex-col max-h-[60vh] sm:max-h-80">
+                         <div className="p-3 border-b border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50 flex-shrink-0">
+                             <input 
+                                type="text"
+                                placeholder="Search reciter..."
+                                value={reciterSearch}
+                                onChange={(e) => setReciterSearch(e.target.value)}
+                                className="w-full px-3 py-2 text-sm rounded-lg bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-1 focus:ring-primary"
+                                autoFocus
+                             />
+                         </div>
+                         <div className="overflow-y-auto p-1 custom-scrollbar flex-1 min-h-0">
+                             {filteredReciters.map(reciter => {
+                                 const isActive = settings.reciterId === reciter.id;
+                                 return (
+                                     <button
+                                        key={reciter.id}
+                                        onClick={() => {
+                                            updateSettings({ reciterId: reciter.id });
+                                            setShowReciterMenu(false);
+                                        }}
+                                        className={`w-full text-left px-3 py-2 text-sm rounded-lg flex items-center justify-between transition ${isActive ? 'bg-primary/10 text-primary' : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'}`}
+                                     >
+                                         <div className="truncate pr-2">
+                                             <div className="font-medium truncate">{reciter.reciter_name}</div>
+                                             {reciter.style && <div className="text-[10px] opacity-70 truncate">{reciter.style}</div>}
+                                         </div>
+                                         {isActive && <Check size={14} />}
+                                     </button>
+                                 )
+                             })}
+                             {filteredReciters.length === 0 && (
+                                 <div className="p-4 text-center text-xs text-gray-400">No reciters found</div>
+                             )}
+                         </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Speed Selector (Dropdown) */}
+            <div className="relative">
+                <button 
+                  onClick={() => {
+                      setShowSpeedMenu(!showSpeedMenu);
+                      setShowReciterMenu(false);
+                  }}
+                  className={`flex items-center gap-1 text-xs font-medium transition px-2 py-1 rounded ${showSpeedMenu ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-primary'}`}
+                  title={t('speed')}
+                >
+                  <Gauge size={14} />
+                  <span>{formatNumber(settings.playbackRate)}x</span>
+                  <ChevronUp size={10} className={`transition-transform ${showSpeedMenu ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* Speed Menu Popover */}
+                {showSpeedMenu && (
+                    <div className="absolute bottom-full left-0 mb-3 w-24 bg-white dark:bg-surface-dark rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-[60] animate-fade-in py-1">
+                        {availableSpeeds.map(speed => (
+                            <button
+                                key={speed}
+                                onClick={() => {
+                                    updateSettings({ playbackRate: speed });
+                                    setShowSpeedMenu(false);
+                                }}
+                                className={`w-full text-left px-4 py-2 text-sm flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-700 transition ${settings.playbackRate === speed ? 'text-primary font-bold bg-primary/5' : 'text-gray-700 dark:text-gray-200'}`}
+                            >
+                                {speed}x
+                                {settings.playbackRate === speed && <Check size={12} />}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
           </div>
 
-          <button 
-            onClick={toggleSpeed}
-            className="flex items-center gap-1 text-xs font-medium text-gray-500 hover:text-primary transition bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded"
-            title={t('speed')}
-          >
-            <Gauge size={14} />
-            <span>{formatNumber(settings.playbackRate)}x</span>
-          </button>
-        </div>
+          {/* Center: Main Controls */}
+          <div className="flex items-center gap-3 md:gap-6 flex-shrink-0">
+            <button onClick={playPrevAyah} className="text-gray-500 hover:text-primary transition" title={t('prevAyah')}>
+              <SkipBack size={24} />
+            </button>
+            
+            <button
+              onClick={() => audio.isPlaying ? pauseAudio() : resumeAudio()}
+              disabled={isLoading}
+              className="w-12 h-12 flex items-center justify-center bg-primary text-white rounded-full hover:bg-primary-dark transition shadow-lg disabled:opacity-80 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <Loader2 size={24} className="animate-spin" />
+              ) : (
+                audio.isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" className="ml-1" />
+              )}
+            </button>
 
-        {/* Center: Main Controls */}
-        <div className="flex items-center gap-3 md:gap-6 flex-shrink-0">
-          <button onClick={playPrevAyah} className="text-gray-500 hover:text-primary transition" title={t('prevAyah')}>
-            <SkipBack size={24} />
-          </button>
-          
-          <button
-            onClick={() => audio.isPlaying ? pauseAudio() : resumeAudio()}
-            disabled={isLoading}
-            className="w-12 h-12 flex items-center justify-center bg-primary text-white rounded-full hover:bg-primary-dark transition shadow-lg disabled:opacity-80 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <Loader2 size={24} className="animate-spin" />
-            ) : (
-              audio.isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" className="ml-1" />
-            )}
-          </button>
-
-          <button onClick={playNextAyah} className="text-gray-500 hover:text-primary transition" title={t('nextAyah')}>
-            <SkipForward size={24} />
-          </button>
-        </div>
-
-        {/* Right: Secondary Controls (Repeat, Volume, Close) */}
-        <div className="flex items-center gap-3 flex-1 justify-end">
-          
-          {/* Repeat Toggle */}
-          <button 
-            onClick={toggleRepeat}
-            className={`p-2 rounded-full transition ${settings.repeatMode !== 'none' ? 'text-primary bg-primary/10' : 'text-gray-400 hover:text-gray-600'}`}
-            title={t('repeat')}
-          >
-            {settings.repeatMode === 'one' ? <Repeat1 size={20} /> : <Repeat size={20} />}
-          </button>
-
-          {/* Volume (Desktop) */}
-          <div className="hidden md:flex items-center gap-2 group">
-             <button onClick={() => setIsMuted(!isMuted)} className="text-gray-500 hover:text-gray-700">
-                {isMuted || settings.volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
-             </button>
-             <input 
-               type="range" 
-               min="0" 
-               max="1" 
-               step="0.05" 
-               value={isMuted ? 0 : settings.volume}
-               onChange={(e) => updateSettings({ volume: parseFloat(e.target.value) })}
-               className="w-20 h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-primary"
-             />
+            <button onClick={playNextAyah} className="text-gray-500 hover:text-primary transition" title={t('nextAyah')}>
+              <SkipForward size={24} />
+            </button>
           </div>
 
-          <button 
-            onClick={stopAudio}
-            className="p-2 text-gray-400 hover:text-red-500 transition ml-2"
-          >
-            <X size={20} />
-          </button>
+          {/* Right: Secondary Controls (Repeat, Volume, Close) */}
+          <div className="flex items-center gap-3 flex-1 justify-end">
+            
+            {/* Repeat Toggle */}
+            <button 
+              onClick={toggleRepeat}
+              className={`p-2 rounded-full transition ${settings.repeatMode !== 'none' ? 'text-primary bg-primary/10' : 'text-gray-400 hover:text-gray-600'}`}
+              title={t('repeat')}
+            >
+              {settings.repeatMode === 'one' ? <Repeat1 size={20} /> : <Repeat size={20} />}
+            </button>
+
+            {/* Volume (Desktop) */}
+            <div className="hidden md:flex items-center gap-2 group">
+               <button onClick={() => setIsMuted(!isMuted)} className="text-gray-500 hover:text-gray-700">
+                  {isMuted || settings.volume === 0 ? <VolumeX size={20} /> : <Volume2 size={20} />}
+               </button>
+               <input 
+                 type="range" 
+                 min="0" 
+                 max="1" 
+                 step="0.05" 
+                 value={isMuted ? 0 : settings.volume}
+                 onChange={(e) => updateSettings({ volume: parseFloat(e.target.value) })}
+                 className="w-20 h-1 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-primary"
+               />
+            </div>
+
+            <button 
+              onClick={stopAudio}
+              className="p-2 text-gray-400 hover:text-red-500 transition ml-2"
+            >
+              <X size={20} />
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

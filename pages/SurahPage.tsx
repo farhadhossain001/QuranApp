@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { getChapterInfo, getVerses, getAyahAudioUrl } from '../services/api';
+import { getChapterInfo, getVerses } from '../services/api';
 import { Surah, Ayah, ARABIC_FONT_SIZES, FONT_SIZES } from '../types';
 import { Play, Pause, Bookmark as BookmarkIcon, Share2 } from 'lucide-react';
 import { useAppStore } from '../context/Store';
@@ -16,7 +16,8 @@ const SurahPage = () => {
   const [hasMore, setHasMore] = useState(true);
   const { 
     settings, bookmarks, toggleBookmark, playAyah, audio, pauseAudio, resumeAudio, 
-    setRecentSurah, t, formatNumber, getSurahName, setHeaderTitle 
+    setRecentSurah, t, formatNumber, getSurahName, setHeaderTitle, availableTranslations,
+    registerAudioUrls 
   } = useAppStore();
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
@@ -42,24 +43,33 @@ const SurahPage = () => {
       }
     };
     fetchSurah();
-  }, [id, settings.appLanguage]); // Depend on language to refresh title if language changes
+  }, [id, settings.appLanguage]);
 
+  // Fetch Verses when ID, Page, Translation, or Reciter changes
   useEffect(() => {
     const fetchAyahs = async () => {
       if (!id) return;
       setLoading(true);
-      const data = await getVerses(parseInt(id), page);
+      
+      const data = await getVerses(
+          parseInt(id), 
+          page, 
+          20, 
+          settings.selectedTranslationIds,
+          settings.reciterId // Pass Reciter ID for Audio
+      );
+      
       if (data) {
         setAyahs(prev => page === 1 ? data.verses : [...prev, ...data.verses]);
         setHasMore(page < data.total_pages);
+        
+        // Register audio URLs with the store for playlist management
+        registerAudioUrls(data.verses);
       }
       setLoading(false);
     };
     fetchAyahs();
-  }, [id, page]);
-
-  // Load more trigger could be added here with IntersectionObserver
-  // For MVP, a simple button
+  }, [id, page, settings.selectedTranslationIds.join(','), settings.reciterId]); 
 
   const isBookmarked = (ayahId: number) => {
     if (!surah) return false;
@@ -72,19 +82,28 @@ const SurahPage = () => {
       id: `${surah.id}:${ayah.verse_number}`,
       surahNumber: surah.id,
       ayahNumber: ayah.verse_number,
-      surahName: surah.name_simple, // Keep simple name for internal reference or update to localized in display
+      surahName: surah.name_simple, 
       timestamp: Date.now()
     });
   };
 
   const handlePlay = (ayah: Ayah) => {
     if (!surah) return;
-    const url = getAyahAudioUrl(surah.id, ayah.verse_number, settings.reciterId);
+    
     if (audio.currentSurahId === surah.id && audio.currentAyahId === ayah.verse_number) {
         audio.isPlaying ? pauseAudio() : resumeAudio();
     } else {
-        playAyah(surah.id, ayah.verse_number, url);
+        if (ayah.audio?.url) {
+            playAyah(surah.id, ayah.verse_number, ayah.audio.url);
+        } else {
+            console.warn("No audio URL found for this ayah");
+        }
     }
+  };
+
+  const getTranslatorName = (resourceId: number) => {
+      const resource = availableTranslations.find(r => r.id === resourceId);
+      return resource ? resource.name : 'Unknown';
   };
 
   if (!surah && loading && page === 1) return <div className="p-8 text-center">{t('loading')}</div>;
@@ -114,13 +133,6 @@ const SurahPage = () => {
             const isPlaying = audio.currentSurahId === surah?.id && audio.currentAyahId === ayah.verse_number && audio.isPlaying;
             const activeAyah = audio.currentSurahId === surah?.id && audio.currentAyahId === ayah.verse_number;
             
-            // Extract Translations
-            // English: 20
-            const enTranslation = ayah.translations.find(tr => tr.resource_id === 20)?.text.replace(/<[^>]*>?/gm, '');
-            // Bangla: Try 161 (Zakaria) first, then 131 (Taisirul)
-            const bnTranslationObj = ayah.translations.find(tr => tr.resource_id === 161) || ayah.translations.find(tr => tr.resource_id === 131);
-            const bnTranslation = bnTranslationObj?.text.replace(/<[^>]*>?/gm, '');
-
             return (
                 <div 
                   key={ayah.id} 
@@ -151,20 +163,18 @@ const SurahPage = () => {
 
                     {/* Translations */}
                     {settings.showTranslation && (
-                        <div className={`space-y-4 ${FONT_SIZES[settings.fontSize as keyof typeof FONT_SIZES]}`}>
-                             {/* Bangla Translation */}
-                             {(settings.translationMode === 'bn' || settings.translationMode === 'both') && bnTranslation && (
-                                 <div className="text-gray-700 dark:text-gray-200 leading-relaxed font-normal" style={{ fontFamily: settings.appLanguage === 'bn' ? 'Hind Siliguri, sans-serif' : 'Inter, sans-serif' }}>
-                                     {bnTranslation}
+                        <div className={`space-y-6 ${FONT_SIZES[settings.fontSize as keyof typeof FONT_SIZES]}`}>
+                             {ayah.translations.map((tr) => (
+                                 <div key={tr.id} className="border-l-2 border-gray-100 dark:border-gray-700 pl-4">
+                                     <div className="text-gray-600 dark:text-gray-300 leading-relaxed font-light mb-1" 
+                                          style={{ fontFamily: 'Inter, sans-serif' }}
+                                          dangerouslySetInnerHTML={{ __html: tr.text }} 
+                                     />
+                                     <p className="text-[10px] text-gray-400 uppercase tracking-wide">
+                                         {getTranslatorName(tr.resource_id)}
+                                     </p>
                                  </div>
-                             )}
-
-                             {/* English Translation */}
-                             {(settings.translationMode === 'en' || settings.translationMode === 'both') && enTranslation && (
-                                 <div className="text-gray-600 dark:text-gray-400 leading-relaxed font-light">
-                                     {enTranslation}
-                                 </div>
-                             )}
+                             ))}
                         </div>
                     )}
                 </div>
