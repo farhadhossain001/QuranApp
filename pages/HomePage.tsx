@@ -50,7 +50,7 @@ const HomePage = () => {
           {/* Prayer Times Category */}
           <Link to="/prayer-times" className="group flex flex-col items-center gap-2">
             <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <PrayerTimeIcon size={32} className="text-blue-600 dark:text-blue-400" />
+               <PrayerTimeIcon size={42} className="text-blue-600 dark:text-blue-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('prayerTimes')}</span>
           </Link>
@@ -58,7 +58,7 @@ const HomePage = () => {
           {/* Quran Category */}
           <Link to="/quran" className="group flex flex-col items-center gap-2">
             <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <QuranIcon size={32} className="text-emerald-600 dark:text-emerald-400" />
+               <QuranIcon size={42} className="text-emerald-600 dark:text-emerald-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('quran')}</span>
           </Link>
@@ -66,7 +66,7 @@ const HomePage = () => {
           {/* Hadith Category */}
           <Link to="/hadith" className="group flex flex-col items-center gap-2">
             <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <HadithIcon size={32} className="text-indigo-600 dark:text-indigo-400" />
+               <HadithIcon size={42} className="text-indigo-600 dark:text-indigo-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('hadith')}</span>
           </Link>
@@ -74,7 +74,7 @@ const HomePage = () => {
            {/* Asma-ul-Husna Category */}
            <Link to="/asma-ul-husna" className="group flex flex-col items-center gap-2">
             <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <AsmaUlHusnaIcon size={32} className="text-purple-600 dark:text-purple-400" />
+               <AsmaUlHusnaIcon size={42} className="text-purple-600 dark:text-purple-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('asmaUlHusna')}</span>
           </Link>
