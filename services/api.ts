@@ -140,16 +140,16 @@ export const searchVerses = async (query: string, page = 1) => {
 }
 
 // Prayer Times
-export const getPrayerTimes = async (lat: number, lng: number) => {
+export const getPrayerTimes = async (lat: number, lng: number, dateObj?: Date) => {
   try {
-    const date = new Date();
+    const date = dateObj || new Date();
     // Padding date components to ensure DD-MM-YYYY format
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
     const year = date.getFullYear();
     const dateStr = `${day}-${month}-${year}`;
 
-    const url = `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=2`;
+    const url = `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=1&school=1`;
     
     const response = await fetch(url);
     if (!response.ok) throw new Error("Failed to fetch prayer times");

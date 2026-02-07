@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAppStore } from '../context/Store';
 import { getPrayerTimes } from '../services/api';
@@ -84,6 +85,16 @@ const PrayerTimesWidget = () => {
         return { nextIndex: nextIdx, timeRemaining: remaining };
     }, [apiData, currentTime]);
 
+    // Helper to format 12 hour time
+    const formatTime12 = (time24: string) => {
+        if (!time24) return '';
+        const [h, m] = time24.split(':');
+        let hours = parseInt(h, 10);
+        const suffix = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12 || 12;
+        return `${formatNumber(hours)}:${formatNumber(m)} ${suffix}`;
+    };
+
     if(loading) return <div className="animate-pulse h-64 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-6"></div>;
     if(!apiData) return null;
 
@@ -161,8 +172,8 @@ const PrayerTimesWidget = () => {
                                 <span className={`text-[10px] uppercase font-bold mb-1 ${isCurrent ? 'text-primary dark:text-primary-dark' : 'text-gray-500 dark:text-gray-400'}`}>
                                     {t(prayer.toLowerCase())}
                                 </span>
-                                <span className={`font-semibold text-sm ${isCurrent ? 'text-primary dark:text-primary-dark scale-110' : 'text-gray-900 dark:text-gray-100'}`}>
-                                    {formatNumber(timings[prayer].split(' ')[0])}
+                                <span className={`font-semibold text-sm whitespace-nowrap ${isCurrent ? 'text-primary dark:text-primary-dark scale-110' : 'text-gray-900 dark:text-gray-100'}`}>
+                                    {formatTime12(timings[prayer].split(' ')[0])}
                                 </span>
                             </div>
                         )
