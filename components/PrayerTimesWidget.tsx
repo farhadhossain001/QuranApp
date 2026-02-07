@@ -85,14 +85,17 @@ const PrayerTimesWidget = () => {
         return { nextIndex: nextIdx, timeRemaining: remaining };
     }, [apiData, currentTime]);
 
-    // Helper to format 12 hour time
-    const formatTime12 = (time24: string) => {
-        if (!time24) return '';
+    // Format time parts
+    const formatTimeParts = (time24: string) => {
+        if (!time24) return { time: '--:--', ampm: '' };
         const [h, m] = time24.split(':');
         let hours = parseInt(h, 10);
         const suffix = hours >= 12 ? 'PM' : 'AM';
         hours = hours % 12 || 12;
-        return `${formatNumber(hours)}:${formatNumber(m)} ${suffix}`;
+        return {
+            time: `${formatNumber(hours)}:${formatNumber(m)}`,
+            ampm: suffix
+        };
     };
 
     if(loading) return <div className="animate-pulse h-64 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-6"></div>;
@@ -107,37 +110,37 @@ const PrayerTimesWidget = () => {
     const currentPrayerName = PRAYER_NAMES[currentPrayerIndex] || 'Isha'; // Safety fallback
 
     return (
-        <div className="rounded-2xl shadow-lg mb-6 overflow-hidden flex flex-col font-sans">
+        <div className="rounded-2xl shadow-lg mb-6 overflow-hidden flex flex-col font-sans bg-white dark:bg-surface-dark">
             
             {/* TOP SECTION: Hero / Countdown */}
-            <div className="bg-primary dark:bg-primary-dark text-white p-6 relative overflow-hidden">
+            <div className="bg-primary dark:bg-primary-dark text-white p-5 relative overflow-hidden">
                 {/* Decoration Circles */}
                 <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-10 rounded-full blur-2xl pointer-events-none"></div>
                 <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-32 h-32 bg-secondary opacity-20 rounded-full blur-xl pointer-events-none"></div>
 
                 <div className="relative z-10">
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex justify-between items-start mb-2">
                         <div className="flex flex-col">
-                            <h2 className="text-sm font-medium opacity-90 uppercase tracking-wider mb-1 flex items-center gap-2">
-                                <Clock size={16} />
+                            <h2 className="text-xs font-medium opacity-90 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                                <Clock size={14} />
                                 {t('currentPrayer')}
                             </h2>
-                            <h1 className="text-3xl font-bold">{t(currentPrayerName.toLowerCase())}</h1>
+                            <h1 className="text-2xl font-bold">{t(currentPrayerName.toLowerCase())}</h1>
                         </div>
                         <div className="text-right">
-                             <div className="text-xs opacity-80 mb-1">{t('timeLeft')}</div>
-                             <div className="text-3xl font-mono font-bold tracking-tight tabular-nums">
+                             <div className="text-[10px] opacity-80 mb-1">{t('timeLeft')}</div>
+                             <div className="text-2xl font-mono font-bold tracking-tight tabular-nums">
                                  {formatNumber(timeRemaining)}
                              </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs sm:text-sm pt-4 border-t border-white/20 mt-2">
+                    <div className="flex items-center justify-between text-xs pt-3 border-t border-white/20 mt-2">
                         <div className="flex items-center gap-2">
-                            <Calendar size={16} className="opacity-80" />
+                            <Calendar size={14} className="opacity-80" />
                             <span>{formatNumber(dateData.readable)}</span>
                         </div>
-                        <div className="font-medium text-base sm:text-lg">
+                        <div className="font-medium">
                             {formatNumber(hijri.day)} {t(`hijri_${hijri.month.number}`)} {formatNumber(hijri.year)}
                         </div>
                     </div>
@@ -145,36 +148,44 @@ const PrayerTimesWidget = () => {
             </div>
 
             {/* BOTTOM SECTION: Prayer List */}
-            <div className="bg-white dark:bg-surface-dark p-4 border border-t-0 border-gray-200 dark:border-gray-800 rounded-b-2xl">
-                <div className="flex justify-between items-center mb-4 px-2">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t('prayerTimes')}</span>
-                    <Link to="/settings" className="text-xs text-primary dark:text-primary-dark flex items-center gap-1 hover:underline">
-                        <MapPin size={12} />
-                        {settings.location.address || 'Dhaka'}
-                        <ArrowRight size={12} />
+            <div className="p-3">
+                <div className="flex justify-between items-center mb-3 px-1">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('prayerTimes')}</span>
+                    <Link to="/settings" className="text-[10px] text-primary dark:text-primary-dark flex items-center gap-1 hover:underline">
+                        <MapPin size={10} />
+                        <span className="max-w-[100px] truncate">{settings.location.address || 'Location'}</span>
+                        <ArrowRight size={10} />
                     </Link>
                 </div>
 
-                <div className="grid grid-cols-5 gap-2 text-center">
+                {/* Grid Layout - Forced 5 columns row */}
+                <div className="grid grid-cols-5 gap-1 sm:gap-2 text-center">
                     {PRAYER_NAMES.map((prayer, index) => {
-                        const isNext = index === nextIndex;
                         const isCurrent = index === currentPrayerIndex;
+                        const { time, ampm } = formatTimeParts(timings[prayer].split(' ')[0]);
                         
                         return (
                             <div 
                                 key={prayer} 
                                 className={`
-                                    flex flex-col items-center justify-center py-2 rounded-lg transition-all
-                                    ${isCurrent ? 'bg-primary/10 dark:bg-primary/20 ring-1 ring-primary dark:ring-primary-dark' : 'hover:bg-gray-50 dark:hover:bg-gray-800'}
-                                    ${!isCurrent && !isNext ? 'opacity-70' : 'opacity-100'}
+                                    flex flex-col items-center justify-center py-2 sm:py-3 rounded-lg transition-all duration-300
+                                    ${isCurrent 
+                                        ? 'bg-primary dark:bg-primary-dark text-white shadow-md scale-105 transform z-10' 
+                                        : 'bg-transparent text-gray-500 dark:text-gray-400'
+                                    }
                                 `}
                             >
-                                <span className={`text-[10px] uppercase font-bold mb-1 ${isCurrent ? 'text-primary dark:text-primary-dark' : 'text-gray-500 dark:text-gray-400'}`}>
+                                <span className={`text-[9px] sm:text-[10px] uppercase font-bold mb-0.5 ${isCurrent ? 'text-white/90' : 'text-gray-400 dark:text-gray-500'}`}>
                                     {t(prayer.toLowerCase())}
                                 </span>
-                                <span className={`font-semibold text-sm whitespace-nowrap ${isCurrent ? 'text-primary dark:text-primary-dark scale-110' : 'text-gray-900 dark:text-gray-100'}`}>
-                                    {formatTime12(timings[prayer].split(' ')[0])}
-                                </span>
+                                <div className="flex flex-col items-center leading-none">
+                                    <span className={`font-bold text-xs sm:text-sm whitespace-nowrap ${isCurrent ? 'text-white' : 'text-gray-900 dark:text-gray-200'}`}>
+                                        {time}
+                                    </span>
+                                    <span className={`text-[8px] sm:text-[9px] font-medium mt-0.5 ${isCurrent ? 'text-white/80' : 'text-gray-400'}`}>
+                                        {ampm}
+                                    </span>
+                                </div>
                             </div>
                         )
                     })}
