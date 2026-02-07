@@ -1,5 +1,5 @@
 {
-  "name": "Qur'an api change v3",
+  "name": "Qur'an icon change",
   "description": "A modern, accessible, and distraction-free Qur'an reading application with multi-language support and audio recitation.",
   "requestFramePermissions": [
     "geolocation"

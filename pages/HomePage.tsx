@@ -41,41 +41,42 @@ const HomePage = () => {
         </div>
       )}
 
-      {/* Categories Grid - Updated to match visual reference (Icon + Label only) */}
+      {/* Categories Grid - App Icon Style */}
       <div>
         <h2 className="text-lg font-bold mb-4 px-1">{t('categories')}</h2>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-6">
+        
+        <div className="grid grid-cols-4 gap-4 px-2 sm:px-0">
           
           {/* Prayer Times Category */}
           <Link to="/prayer-times" className="group flex flex-col items-center gap-2">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-               <PrayerTimeIcon size={64} />
+            <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+               <PrayerTimeIcon size={32} className="text-blue-600 dark:text-blue-400" />
             </div>
-            <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 text-center leading-tight">{t('prayerTimes')}</span>
+            <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('prayerTimes')}</span>
           </Link>
 
           {/* Quran Category */}
           <Link to="/quran" className="group flex flex-col items-center gap-2">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-               <QuranIcon size={64} />
+            <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+               <QuranIcon size={32} className="text-emerald-600 dark:text-emerald-400" />
             </div>
-            <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 text-center leading-tight">{t('quran')}</span>
+            <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('quran')}</span>
           </Link>
 
           {/* Hadith Category */}
           <Link to="/hadith" className="group flex flex-col items-center gap-2">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-               <HadithIcon size={64} />
+            <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+               <HadithIcon size={32} className="text-indigo-600 dark:text-indigo-400" />
             </div>
-            <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 text-center leading-tight">{t('hadith')}</span>
+            <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('hadith')}</span>
           </Link>
 
            {/* Asma-ul-Husna Category */}
            <Link to="/asma-ul-husna" className="group flex flex-col items-center gap-2">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center transition-transform duration-300 group-hover:scale-105">
-               <AsmaUlHusnaIcon size={64} />
+            <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+               <AsmaUlHusnaIcon size={32} className="text-purple-600 dark:text-purple-400" />
             </div>
-            <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 text-center leading-tight">{t('asmaUlHusna')}</span>
+            <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('asmaUlHusna')}</span>
           </Link>
 
         </div>
