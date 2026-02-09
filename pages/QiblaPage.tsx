@@ -94,23 +94,23 @@ const QiblaPage = () => {
 
     const compassRotation = -deviceHeading;
 
-    // Generate Compass Ticks - Reduced density (Every 10 degrees instead of 5)
+    // Generate Compass Ticks - Reduced density (Every 15 degrees = 24 ticks)
     const ticks = useMemo(() => {
-        return Array.from({ length: 36 }).map((_, i) => {
-            const angle = i * 10;
+        return Array.from({ length: 24 }).map((_, i) => {
+            const angle = i * 15;
             const isCardinal = angle % 90 === 0;
-            const isMajor = angle % 30 === 0;
+            const isMajor = angle % 45 === 0;
             
             return (
                 <div
                     key={i}
                     className={`absolute top-0 left-1/2 origin-bottom
-                        ${isCardinal ? 'h-4 w-[3px] bg-gray-900 dark:bg-white' : 
+                        ${isCardinal ? 'h-5 w-[3px] bg-gray-900 dark:bg-white' : 
                           isMajor ? 'h-3 w-[2px] bg-gray-500 dark:bg-gray-400' : 
                           'h-2 w-[1.5px] bg-gray-300 dark:bg-gray-700'}
                     `}
                     style={{ 
-                        transform: `translateX(-50%) rotate(${angle}deg) translateY(2px)`, 
+                        transform: `translateX(-50%) rotate(${angle}deg) translateY(0px)`, 
                         height: '50%',
                         display: 'flex',
                         flexDirection: 'column',
@@ -119,9 +119,10 @@ const QiblaPage = () => {
                         pointerEvents: 'none'
                     }}
                 >
+                    {/* The tick mark itself */}
                     <div 
                         className={`
-                            ${isCardinal ? 'h-4 w-[3px]' : isMajor ? 'h-3 w-[2px]' : 'h-2 w-[1.5px]'}
+                            ${isCardinal ? 'h-5 w-[3px]' : isMajor ? 'h-3 w-[2px]' : 'h-2 w-[1.5px]'}
                             ${isCardinal ? 'bg-primary dark:bg-primary-dark' : 'bg-gray-300 dark:bg-gray-600'}
                         `}
                     />
@@ -150,40 +151,39 @@ const QiblaPage = () => {
             </div>
 
             {/* Main Compass UI - Responsive Size */}
-            <div className="relative w-[260px] h-[260px] sm:w-[320px] sm:h-[320px] flex items-center justify-center">
+            <div className="relative w-[280px] h-[280px] sm:w-[340px] sm:h-[340px] flex items-center justify-center">
                 
                 {/* 1. Static Outer Bezel (Decorative) */}
                 <div className="absolute inset-0 rounded-full border-[8px] border-white dark:border-surface-dark shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] dark:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] z-0"></div>
-                <div className="absolute inset-2 rounded-full border border-gray-100 dark:border-gray-800 z-0"></div>
+                <div className="absolute inset-2 rounded-full border border-gray-100 dark:border-gray-800 z-0 bg-white/50 dark:bg-black/20 backdrop-blur-sm"></div>
 
                 {/* 2. Rotating Dial */}
                 <div 
                     className="w-full h-full rounded-full relative transition-transform duration-300 ease-out will-change-transform z-10"
                     style={{ transform: `rotate(${compassRotation}deg)` }}
                 >
-                    {/* Ticks */}
-                    <div className="absolute inset-4 sm:inset-6">
+                    {/* Ticks Container - Pushed in slightly */}
+                    <div className="absolute inset-4 sm:inset-5">
                         {ticks}
                     </div>
 
-                    {/* Cardinal Labels - Bigger Text */}
-                    {['N', 'E', 'S', 'W'].map((label, i) => (
-                        <div
-                            key={label}
-                            className={`absolute top-8 left-1/2 -translate-x-1/2 text-xl sm:text-2xl font-bold tracking-wider`}
-                            style={{ 
-                                transformOrigin: '0 100px', 
-                                transform: `rotate(${i * 90}deg) translateY(-20px)` 
-                            }}
-                        >
-                            <span 
-                                style={{ transform: `rotate(${-i * 90}deg)` }} 
-                                className={`block ${label === 'N' ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}
-                            >
-                                {label}
-                            </span>
-                        </div>
-                    ))}
+                    {/* Cardinal Labels - Explicitly Positioned */}
+                    {/* North */}
+                    <div className="absolute top-[1%] left-1/2 -translate-x-1/2">
+                        <span className="text-3xl font-bold text-red-500 drop-shadow-sm">N</span>
+                    </div>
+                    {/* East */}
+                    <div className="absolute top-1/2 right-[1%] -translate-y-1/2">
+                        <span className="text-3xl font-bold text-gray-600 dark:text-gray-300">E</span>
+                    </div>
+                    {/* South */}
+                    <div className="absolute bottom-[1%] left-1/2 -translate-x-1/2">
+                        <span className="text-3xl font-bold text-gray-600 dark:text-gray-300">S</span>
+                    </div>
+                    {/* West */}
+                    <div className="absolute top-1/2 left-[1%] -translate-y-1/2">
+                        <span className="text-3xl font-bold text-gray-600 dark:text-gray-300">W</span>
+                    </div>
 
                     {/* Kaaba Indicator (Fixed to Dial at Qibla Angle) */}
                     {qiblaDirection !== null && (
@@ -192,8 +192,8 @@ const QiblaPage = () => {
                             style={{ transform: `rotate(${qiblaDirection}deg)` }}
                         >
                             {/* The Kaaba Icon placed on the rim */}
-                            <div className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 transform -rotate-[0deg]">
-                                <div className={`relative transition-all duration-500 ${isAligned ? 'scale-125 drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'scale-100 opacity-90'}`}>
+                            <div className="absolute top-2 left-1/2 -translate-x-1/2 transform -rotate-[0deg]">
+                                <div className={`relative transition-all duration-500 ${isAligned ? 'scale-110 drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'scale-90 opacity-90'}`}>
                                     <KaabaIcon size={32} className="text-gray-900 dark:text-white" />
                                     {/* Small arrow below Kaaba pointing to center */}
                                     <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[6px] border-t-secondary mx-auto mt-1"></div>
@@ -204,14 +204,16 @@ const QiblaPage = () => {
                 </div>
 
                 {/* 3. Static Top Indicator (Lubber Line) */}
-                <div className="absolute top-[-10px] left-1/2 -translate-x-1/2 z-20">
-                    <div className={`w-1.5 h-8 rounded-full transition-colors duration-300 ${isAligned ? 'bg-secondary shadow-[0_0_10px_rgba(245,158,11,0.8)]' : 'bg-primary dark:bg-primary-dark'}`}></div>
+                <div className="absolute top-[-12px] left-1/2 -translate-x-1/2 z-20">
+                    <div className={`w-2 h-4 sm:h-5 rounded-full transition-colors duration-300 ${isAligned ? 'bg-secondary shadow-[0_0_10px_rgba(245,158,11,0.8)]' : 'bg-primary dark:bg-primary-dark'}`}></div>
+                    {/* Small triangle pointing down */}
+                    <div className={`w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] mx-auto ${isAligned ? 'border-t-secondary' : 'border-t-primary dark:border-t-primary-dark'}`}></div>
                 </div>
 
                 {/* 4. Center Ornament */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
-                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white/5 dark:bg-black/5 backdrop-blur-sm rounded-full border border-gray-100/50 dark:border-white/5 flex items-center justify-center">
-                        <div className="w-2 h-2 bg-primary dark:bg-primary-dark rounded-full"></div>
+                    <div className="w-24 h-24 sm:w-32 sm:h-32 bg-gradient-to-br from-white/10 to-transparent dark:from-white/5 dark:to-transparent backdrop-blur-md rounded-full border border-white/20 dark:border-white/10 flex items-center justify-center shadow-inner">
+                        <div className="w-3 h-3 bg-red-500 rounded-full shadow-md border-2 border-white dark:border-gray-900"></div>
                     </div>
                 </div>
 
@@ -220,7 +222,7 @@ const QiblaPage = () => {
             {/* Feedback Message */}
             <div className="text-center h-8">
                 {isAligned && (
-                    <div className="inline-block px-4 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold rounded-full animate-pulse">
+                    <div className="inline-block px-4 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold rounded-full animate-pulse shadow-sm">
                         You are facing the Qibla
                     </div>
                 )}
