@@ -94,10 +94,10 @@ const QiblaPage = () => {
 
     const compassRotation = -deviceHeading;
 
-    // Generate Compass Ticks
+    // Generate Compass Ticks - Reduced density (Every 10 degrees instead of 5)
     const ticks = useMemo(() => {
-        return Array.from({ length: 72 }).map((_, i) => {
-            const angle = i * 5;
+        return Array.from({ length: 36 }).map((_, i) => {
+            const angle = i * 10;
             const isCardinal = angle % 90 === 0;
             const isMajor = angle % 30 === 0;
             
@@ -105,9 +105,9 @@ const QiblaPage = () => {
                 <div
                     key={i}
                     className={`absolute top-0 left-1/2 origin-bottom
-                        ${isCardinal ? 'h-3 w-[2px] bg-gray-900 dark:bg-white' : 
-                          isMajor ? 'h-2 w-[1.5px] bg-gray-500 dark:bg-gray-400' : 
-                          'h-1 w-[1px] bg-gray-300 dark:bg-gray-700'}
+                        ${isCardinal ? 'h-4 w-[3px] bg-gray-900 dark:bg-white' : 
+                          isMajor ? 'h-3 w-[2px] bg-gray-500 dark:bg-gray-400' : 
+                          'h-2 w-[1.5px] bg-gray-300 dark:bg-gray-700'}
                     `}
                     style={{ 
                         transform: `translateX(-50%) rotate(${angle}deg) translateY(2px)`, 
@@ -121,7 +121,7 @@ const QiblaPage = () => {
                 >
                     <div 
                         className={`
-                            ${isCardinal ? 'h-3 w-[2px]' : isMajor ? 'h-2 w-[1.5px]' : 'h-1 w-[1px]'}
+                            ${isCardinal ? 'h-4 w-[3px]' : isMajor ? 'h-3 w-[2px]' : 'h-2 w-[1.5px]'}
                             ${isCardinal ? 'bg-primary dark:bg-primary-dark' : 'bg-gray-300 dark:bg-gray-600'}
                         `}
                     />
@@ -131,10 +131,10 @@ const QiblaPage = () => {
     }, []);
 
     return (
-        <div className="flex flex-col items-center justify-start pt-12 min-h-[80vh] space-y-16 pb-20">
+        <div className="flex flex-col items-center justify-center min-h-[75vh] space-y-12 pb-20">
             
             {/* Top Info Header */}
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-2 mt-4">
                 <div className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white dark:bg-surface-dark rounded-full shadow-sm border border-gray-100 dark:border-gray-800">
                     <span className="text-xs font-bold uppercase tracking-widest text-gray-500">
                         {t('qiblaDirection')}
@@ -149,8 +149,8 @@ const QiblaPage = () => {
                 </p>
             </div>
 
-            {/* Main Compass UI */}
-            <div className="relative w-[320px] h-[320px] flex items-center justify-center">
+            {/* Main Compass UI - Responsive Size */}
+            <div className="relative w-[260px] h-[260px] sm:w-[320px] sm:h-[320px] flex items-center justify-center">
                 
                 {/* 1. Static Outer Bezel (Decorative) */}
                 <div className="absolute inset-0 rounded-full border-[8px] border-white dark:border-surface-dark shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] dark:shadow-[0_10px_40px_-10px_rgba(0,0,0,0.5)] z-0"></div>
@@ -162,23 +162,23 @@ const QiblaPage = () => {
                     style={{ transform: `rotate(${compassRotation}deg)` }}
                 >
                     {/* Ticks */}
-                    <div className="absolute inset-6">
+                    <div className="absolute inset-4 sm:inset-6">
                         {ticks}
                     </div>
 
-                    {/* Cardinal Labels */}
+                    {/* Cardinal Labels - Bigger Text */}
                     {['N', 'E', 'S', 'W'].map((label, i) => (
                         <div
                             key={label}
-                            className={`absolute top-10 left-1/2 -translate-x-1/2 text-sm font-bold tracking-wider`}
+                            className={`absolute top-8 left-1/2 -translate-x-1/2 text-xl sm:text-2xl font-bold tracking-wider`}
                             style={{ 
-                                transformOrigin: '0 120px', 
+                                transformOrigin: '0 100px', 
                                 transform: `rotate(${i * 90}deg) translateY(-20px)` 
                             }}
                         >
                             <span 
                                 style={{ transform: `rotate(${-i * 90}deg)` }} 
-                                className={`block ${label === 'N' ? 'text-red-500 text-base' : 'text-gray-500 dark:text-gray-400'}`}
+                                className={`block ${label === 'N' ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'}`}
                             >
                                 {label}
                             </span>
@@ -192,7 +192,7 @@ const QiblaPage = () => {
                             style={{ transform: `rotate(${qiblaDirection}deg)` }}
                         >
                             {/* The Kaaba Icon placed on the rim */}
-                            <div className="absolute top-6 left-1/2 -translate-x-1/2 transform -rotate-[0deg]">
+                            <div className="absolute top-4 sm:top-6 left-1/2 -translate-x-1/2 transform -rotate-[0deg]">
                                 <div className={`relative transition-all duration-500 ${isAligned ? 'scale-125 drop-shadow-[0_0_15px_rgba(245,158,11,0.5)]' : 'scale-100 opacity-90'}`}>
                                     <KaabaIcon size={32} className="text-gray-900 dark:text-white" />
                                     {/* Small arrow below Kaaba pointing to center */}
@@ -210,7 +210,7 @@ const QiblaPage = () => {
 
                 {/* 4. Center Ornament */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
-                    <div className="w-24 h-24 bg-white/5 dark:bg-black/5 backdrop-blur-sm rounded-full border border-gray-100/50 dark:border-white/5 flex items-center justify-center">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white/5 dark:bg-black/5 backdrop-blur-sm rounded-full border border-gray-100/50 dark:border-white/5 flex items-center justify-center">
                         <div className="w-2 h-2 bg-primary dark:bg-primary-dark rounded-full"></div>
                     </div>
                 </div>
@@ -218,7 +218,7 @@ const QiblaPage = () => {
             </div>
 
             {/* Feedback Message */}
-            <div className="text-center h-10">
+            <div className="text-center h-8">
                 {isAligned && (
                     <div className="inline-block px-4 py-1.5 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-bold rounded-full animate-pulse">
                         You are facing the Qibla
