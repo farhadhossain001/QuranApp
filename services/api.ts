@@ -161,6 +161,32 @@ export const getPrayerTimes = async (lat: number, lng: number, dateObj?: Date) =
   }
 };
 
+// Calendar
+export const getCalendar = async (month: number, year: number) => {
+  try {
+    const response = await fetch(`https://api.aladhan.com/v1/gToHCalendar/${month}/${year}`);
+    if (!response.ok) throw new Error("Failed to fetch calendar");
+    const data = await response.json();
+    return data.data;
+  } catch (e) {
+    console.error(e);
+    return [];
+  }
+};
+
+// Qibla Direction
+export const getQiblaDirection = async (lat: number, lng: number) => {
+  try {
+    const response = await fetch(`https://api.aladhan.com/v1/qibla/${lat}/${lng}`);
+    if (!response.ok) throw new Error("Failed to fetch qibla");
+    const data = await response.json();
+    return data.data.direction;
+  } catch (e) {
+    console.error(e);
+    return null;
+  }
+};
+
 // --- Hadith API Functions (New Provider) ---
 
 // In-memory cache to prevent re-fetching large JSON files

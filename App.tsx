@@ -14,6 +14,8 @@ import BookmarksPage from './pages/BookmarksPage';
 import SearchPage from './pages/SearchPage';
 import SettingsPage from './pages/SettingsPage';
 import AsmaUlHusnaPage from './pages/AsmaUlHusnaPage';
+import CalendarPage from './pages/CalendarPage';
+import QiblaPage from './pages/QiblaPage';
 
 function App() {
   return (
@@ -32,6 +34,8 @@ function App() {
             <Route path="/search" element={<SearchPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/asma-ul-husna" element={<AsmaUlHusnaPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/qibla" element={<QiblaPage />} />
           </Routes>
         </Layout>
       </HashRouter>

@@ -48,6 +48,14 @@ const HadithPage = () => {
         return Array.from(codes).slice(0, 4); // Show max 4
     };
 
+    const getLocalizedBookName = (book: HadithBook) => {
+        // Try to find translation for hadith_slug
+        const key = `hadith_${book.id}`;
+        const translated = t(key);
+        // If translation returns key (meaning missing), fallback to API name
+        return translated !== key ? translated : book.name;
+    }
+
     if (loading) {
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -101,11 +109,11 @@ const HadithPage = () => {
                             
                             <div>
                                 <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-primary transition-colors capitalize">
-                                    {book.name}
+                                    {getLocalizedBookName(book)}
                                 </h2>
                                 
                                 <div className="flex items-center text-sm font-medium text-primary dark:text-primary-dark opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0 mt-3">
-                                    Read Collection <ArrowRight size={16} className="ml-1" />
+                                    {t('readCollection')} <ArrowRight size={16} className="ml-1" />
                                 </div>
                             </div>
                         </Link>
