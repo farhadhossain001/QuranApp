@@ -137,7 +137,14 @@ export const translations: Record<string, Record<string, string>> = {
     calibrate: 'Calibrate Compass',
     calibrateDesc: 'Move your phone in a figure-8 motion to calibrate.',
     compassPermission: 'Enable Compass',
-    compassPermissionDesc: 'Permission is needed to access your device orientation.'
+    compassPermissionDesc: 'Permission is needed to access your device orientation.',
+    rotateToAlign: 'Rotate to align with Qibla',
+    calibrateInstructions: 'Hold your phone flat and horizontal. For best accuracy, move your phone in a figure-8 pattern to calibrate the compass.',
+    facingQibla: 'You are facing the Qibla',
+    heading: 'Heading',
+    currentLocation: 'Current Location',
+    permissionDenied: 'Permission denied',
+    permissionFailed: 'Failed to request permission',
   },
   bn: {
     home: 'হোম',
@@ -276,6 +283,13 @@ export const translations: Record<string, Record<string, string>> = {
     calibrate: 'কম্পাস ক্যালিব্রেট করুন',
     calibrateDesc: 'ক্যালিব্রেট করতে আপনার ফোনটিকে ৮-আকৃতিতে ঘোরান।',
     compassPermission: 'কম্পাস চালু করুন',
-    compassPermissionDesc: 'আপনার ডিভাইসের দিক নির্ণয়ের জন্য অনুমতি প্রয়োজন।'
+    compassPermissionDesc: 'আপনার ডিভাইসের দিক নির্ণয়ের জন্য অনুমতি প্রয়োজন।',
+    rotateToAlign: 'কিবলার দিকে ঘুরুন',
+    calibrateInstructions: 'আপনার ফোনটি সমতল এবং অনুভূমিকভাবে ধরুন। সর্বোত্তম নির্ভুলতার জন্য, কম্পাসটি ক্যালিব্রেট করতে আপনার ফোনটিকে ৮-আকৃতিতে ঘোরান।',
+    facingQibla: 'আপনি কিবলার দিকে আছেন',
+    heading: 'দিক',
+    currentLocation: 'বর্তমান অবস্থান',
+    permissionDenied: 'অনুমতি প্রত্যাখ্যান করা হয়েছে',
+    permissionFailed: 'অনুমতি অনুরোধ ব্যর্থ হয়েছে',
   }
 };
