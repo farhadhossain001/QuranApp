@@ -2,73 +2,143 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useAppStore } from '../context/Store';
 import { getQiblaDirection } from '../services/api';
 
-// Custom SVG Icons
+// SVG Icons
 const KaabaIcon = ({ className = "", size = 24, isAligned = false }: { className?: string; size?: number; isAligned?: boolean }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
-        <rect x="4" y="6" width="16" height="14" rx="1" fill={isAligned ? "#92400e" : "#1f2937"} className="dark:fill-gray-200" />
-        <rect x="4" y="8" width="16" height="3" fill={isAligned ? "#fbbf24" : "#4b5563"} className="dark:fill-amber-400" />
-        <rect x="10" y="14" width="4" height="6" rx="0.5" fill={isAligned ? "#fbbf24" : "#6b7280"} className="dark:fill-amber-500" />
-        <path d="M4 6L12 2L20 6" stroke={isAligned ? "#92400e" : "#1f2937"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="dark:stroke-gray-200" />
+    <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        className={className}
+    >
+        {/* Kaaba base structure */}
+        <rect
+            x="4"
+            y="6"
+            width="16"
+            height="14"
+            rx="1"
+            fill={isAligned ? "#1f2937" : "#374151"}
+            className="dark:fill-gray-200"
+        />
+        {/* Kiswa cloth draping */}
+        <rect
+            x="4"
+            y="6"
+            width="16"
+            height="3"
+            fill={isAligned ? "#fbbf24" : "#d4af37"}
+        />
+        {/* Gold band detail */}
+        <rect
+            x="4"
+            y="8"
+            width="16"
+            height="1.5"
+            fill={isAligned ? "#fcd34d" : "#c9a227"}
+        />
+        {/* Door */}
+        <rect
+            x="9"
+            y="11"
+            width="6"
+            height="9"
+            rx="0.5"
+            fill={isAligned ? "#92400e" : "#78350f"}
+        />
+        {/* Door frame */}
+        <rect
+            x="9.5"
+            y="11.5"
+            width="5"
+            height="8"
+            rx="0.3"
+            fill="none"
+            stroke={isAligned ? "#fbbf24" : "#d4af37"}
+            strokeWidth="0.5"
+        />
     </svg>
 );
 
-const CompassNeedleIcon = ({ className = "", isAligned = false }: { className?: string; isAligned?: boolean }) => (
-    <svg width="40" height="50" viewBox="0 0 40 50" fill="none" className={className}>
-        <defs>
-            <linearGradient id="needleGradientTop" x1="20" y1="0" x2="20" y2="25" gradientUnits="userSpaceOnUse">
-                <stop stopColor={isAligned ? "#10b981" : "#ef4444"} />
-                <stop offset="1" stopColor={isAligned ? "#059669" : "#dc2626"} />
-            </linearGradient>
-            <linearGradient id="needleGradientBottom" x1="20" y1="25" x2="20" y2="50" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#e5e7eb" />
-                <stop offset="1" stopColor="#9ca3af" />
-            </linearGradient>
-            <filter id="needleShadow" x="-2" y="-2" width="44" height="54">
-                <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.3" />
-            </filter>
-        </defs>
-        {/* Top needle (North/Qibla) */}
-        <path d="M20 0L28 22L20 18L12 22Z" fill="url(#needleGradientTop)" filter="url(#needleShadow)" />
-        {/* Bottom needle (South) */}
-        <path d="M20 50L12 28L20 32L28 28Z" fill="url(#needleGradientBottom)" filter="url(#needleShadow)" />
-        {/* Center circle */}
-        <circle cx="20" cy="25" r="5" fill="#374151" stroke="#1f2937" strokeWidth="1" className="dark:fill-gray-300 dark:stroke-gray-400" />
-        <circle cx="20" cy="25" r="2" fill="#6b7280" className="dark:fill-gray-500" />
+const CompassNeedleIcon = ({ isAligned = false }: { isAligned?: boolean }) => (
+    <svg width="28" height="44" viewBox="0 0 28 44" className="drop-shadow-xl">
+        {/* Needle shadow */}
+        <ellipse cx="14" cy="42" rx="6" ry="2" fill="rgba(0,0,0,0.2)" />
+        
+        {/* Main needle body */}
+        <path
+            d="M14 2 L22 18 L14 14 L6 18 Z"
+            fill={isAligned ? "#10b981" : "#ef4444"}
+            className="transition-colors duration-300"
+        />
+        <path
+            d="M14 2 L14 14 L6 18 Z"
+            fill={isAligned ? "#059669" : "#dc2626"}
+            className="transition-colors duration-300"
+        />
+        
+        {/* Needle stem */}
+        <rect
+            x="11"
+            y="16"
+            width="6"
+            height="22"
+            rx="3"
+            fill={isAligned ? "#10b981" : "#6b7280"}
+            className="transition-colors duration-300"
+        />
+        <rect
+            x="11"
+            y="16"
+            width="3"
+            height="22"
+            rx="1.5"
+            fill={isAligned ? "#059669" : "#4b5563"}
+            className="transition-colors duration-300"
+        />
+        
+        {/* Highlight on needle */}
+        <path
+            d="M14 4 L18 14 L14 12 Z"
+            fill="rgba(255,255,255,0.3)"
+        />
     </svg>
 );
 
 const LocationPinIcon = ({ className = "" }: { className?: string }) => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={className}>
-        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="currentColor" />
-        <circle cx="12" cy="9" r="2.5" fill="white" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+        <circle cx="12" cy="10" r="3" />
     </svg>
 );
 
-const CheckCircleIcon = ({ className = "" }: { className?: string }) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className={className}>
-        <circle cx="12" cy="12" r="10" fill="currentColor" fillOpacity="0.2" />
-        <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="1.5" fill="none" />
+const CheckIcon = ({ className = "" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12" />
     </svg>
 );
 
 const RotateIcon = ({ className = "" }: { className?: string }) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className={className}>
-        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 2v6h-6" />
+        <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+        <path d="M3 22v-6h6" />
+        <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
     </svg>
 );
 
-const ShieldIcon = ({ className = "" }: { className?: string }) => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className={className}>
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+const ShieldCheckIcon = ({ className = "" }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        <polyline points="9 12 11 14 15 10" />
     </svg>
 );
 
 const InfoIcon = ({ className = "" }: { className?: string }) => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className={className}>
-        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-        <path d="M12 16v-4M12 8h.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <line x1="12" y1="16" x2="12" y2="12" />
+        <line x1="12" y1="8" x2="12.01" y2="8" />
     </svg>
 );
 
@@ -122,6 +192,7 @@ const QiblaPage = () => {
     // Smooth animation loop
     const animateCompass = useCallback(() => {
         const now = Date.now();
+        const deltaTime = Math.min((now - lastUpdateTimeRef.current) / 1000, 0.1);
         lastUpdateTimeRef.current = now;
 
         const current = currentHeadingRef.current;
@@ -140,6 +211,7 @@ const QiblaPage = () => {
         animationRef.current = requestAnimationFrame(animateCompass);
     }, [getShortestRotation, normalizeAngle]);
 
+    // Start animation loop
     useEffect(() => {
         animationRef.current = requestAnimationFrame(animateCompass);
         return () => {
@@ -149,13 +221,18 @@ const QiblaPage = () => {
         };
     }, [animateCompass]);
 
+    // Handle device orientation
     const handleOrientation = useCallback((event: DeviceOrientationEvent) => {
         let heading = 0;
 
         if ((event as any).webkitCompassHeading !== undefined) {
             heading = (event as any).webkitCompassHeading;
         } else if (event.alpha !== null) {
-            heading = (360 - event.alpha) % 360;
+            if ((event as any).absolute === true || event.absolute) {
+                heading = (360 - event.alpha) % 360;
+            } else {
+                heading = (360 - event.alpha) % 360;
+            }
         }
 
         headingHistoryRef.current.push(heading);
@@ -167,6 +244,7 @@ const QiblaPage = () => {
         targetHeadingRef.current = filteredHeading;
     }, [applyMedianFilter]);
 
+    // Initialize compass and fetch Qibla direction
     useEffect(() => {
         setHeaderTitle(t('qibla'));
 
@@ -194,6 +272,7 @@ const QiblaPage = () => {
         };
     }, [t, setHeaderTitle, settings.location, handleOrientation]);
 
+    // Check alignment
     useEffect(() => {
         if (qiblaDirection === null) return;
 
@@ -236,91 +315,107 @@ const QiblaPage = () => {
     }, [handleOrientation]);
 
     const compassRotation = -smoothedHeading;
-    const qiblaAngleOnCompass = qiblaDirection !== null ? qiblaDirection - smoothedHeading : 0;
 
-    // Compass ring ticks
-    const compassTicks = useMemo(() => {
-        const ticks = [];
-        for (let i = 0; i < 360; i += 5) {
-            const isCardinal = i % 90 === 0;
-            const isMajor = i % 30 === 0;
-            const isMinor = i % 15 === 0;
+    // Generate compass tick marks
+    const ticks = useMemo(() => {
+        const elements = [];
+        const totalTicks = 72;
 
-            let length = 6;
-            let width = 1;
-            let color = 'rgba(156, 163, 175, 0.4)';
+        for (let i = 0; i < totalTicks; i++) {
+            const angle = i * (360 / totalTicks);
+            const isCardinal = angle % 90 === 0;
+            const isMajor = angle % 30 === 0;
+            const isMinor = angle % 15 === 0;
 
+            let height, width, color;
             if (isCardinal) {
-                length = 16;
+                height = 16;
                 width = 2.5;
-                color = '#10b981';
+                color = angle === 0 ? '#ef4444' : '#10b981';
             } else if (isMajor) {
-                length = 12;
+                height = 12;
                 width = 2;
-                color = 'rgba(107, 114, 128, 0.8)';
+                color = '#6b7280';
             } else if (isMinor) {
-                length = 8;
+                height = 8;
                 width = 1.5;
-                color = 'rgba(156, 163, 175, 0.6)';
+                color = '#9ca3af';
+            } else {
+                height = 5;
+                width = 1;
+                color = '#d1d5db';
             }
 
-            ticks.push(
+            elements.push(
                 <line
                     key={i}
                     x1="150"
                     y1="20"
                     x2="150"
-                    y2={20 + length}
+                    y2={20 + height}
                     stroke={color}
                     strokeWidth={width}
                     strokeLinecap="round"
-                    transform={`rotate(${i} 150 150)`}
+                    className="dark:opacity-80"
+                    transform={`rotate(${angle} 150 150)`}
                 />
             );
         }
-        return ticks;
+        return elements;
     }, []);
 
-    // Cardinal direction labels with icons
+    // Cardinal direction labels with proper icons
     const cardinalLabels = useMemo(() => {
         const labels = [
-            { text: 'N', angle: 0, isNorth: true },
-            { text: 'E', angle: 90, isNorth: false },
-            { text: 'S', angle: 180, isNorth: false },
-            { text: 'W', angle: 270, isNorth: false },
+            { text: 'N', angle: 0 },
+            { text: 'E', angle: 90 },
+            { text: 'S', angle: 180 },
+            { text: 'W', angle: 270 },
         ];
 
-        return labels.map(({ text, angle, isNorth }) => {
+        return labels.map(({ text, angle }) => {
             const radians = (angle - 90) * (Math.PI / 180);
-            const radius = 110;
+            const radius = 115;
             const x = 150 + radius * Math.cos(radians);
             const y = 150 + radius * Math.sin(radians);
 
+            const isNorth = angle === 0;
+
             return (
                 <g key={text}>
-                    {isNorth && (
-                        <circle
-                            cx={x}
-                            cy={y}
-                            r="14"
-                            fill="#fef2f2"
-                            stroke="#ef4444"
-                            strokeWidth="2"
-                            className="dark:fill-red-900/30"
-                        />
+                    {isNorth ? (
+                        // North indicator with triangle
+                        <g transform={`translate(${x}, ${y})`}>
+                            <polygon
+                                points="0,-12 -8,6 8,6"
+                                fill="#ef4444"
+                                className="drop-shadow-sm"
+                            />
+                            <text
+                                y="2"
+                                fill="white"
+                                fontSize="10"
+                                fontWeight="bold"
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                            >
+                                N
+                            </text>
+                        </g>
+                    ) : (
+                        <text
+                            x={x}
+                            y={y}
+                            fill="#374151"
+                            className="dark:fill-gray-300"
+                            fontSize="18"
+                            fontWeight="600"
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                        >
+                            {text}
+                        </text>
                     )}
-                    <text
-                        x={x}
-                        y={y}
-                        fill={isNorth ? '#ef4444' : '#6b7280'}
-                        fontSize={isNorth ? '16' : '14'}
-                        fontWeight="bold"
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        className={`select-none ${isNorth ? '' : 'dark:fill-gray-400'}`}
-                    >
-                        {text}
-                    </text>
                 </g>
             );
         });
@@ -332,7 +427,7 @@ const QiblaPage = () => {
         for (let angle = 30; angle < 360; angle += 30) {
             if (angle % 90 !== 0) {
                 const radians = (angle - 90) * (Math.PI / 180);
-                const radius = 110;
+                const radius = 115;
                 const x = 150 + radius * Math.cos(radians);
                 const y = 150 + radius * Math.sin(radians);
 
@@ -342,11 +437,11 @@ const QiblaPage = () => {
                         x={x}
                         y={y}
                         fill="#9ca3af"
-                        fontSize="10"
+                        className="dark:fill-gray-500"
+                        fontSize="11"
                         fontWeight="500"
                         textAnchor="middle"
                         dominantBaseline="middle"
-                        className="select-none dark:fill-gray-500"
                     >
                         {angle}°
                     </text>
@@ -356,41 +451,81 @@ const QiblaPage = () => {
         return markers;
     }, []);
 
+    // Qibla indicator on compass
+    const qiblaIndicator = useMemo(() => {
+        if (qiblaDirection === null) return null;
+
+        return (
+            <g transform={`rotate(${qiblaDirection} 150 150)`}>
+                {/* Qibla direction line */}
+                <line
+                    x1="150"
+                    y1="55"
+                    x2="150"
+                    y2="75"
+                    stroke="#f59e0b"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    className={`transition-opacity duration-300 ${isAligned ? 'opacity-100' : 'opacity-60'}`}
+                />
+                
+                {/* Kaaba marker background */}
+                <circle
+                    cx="150"
+                    cy="38"
+                    r="16"
+                    fill={isAligned ? '#fef3c7' : '#f3f4f6'}
+                    stroke={isAligned ? '#f59e0b' : '#d1d5db'}
+                    strokeWidth="2"
+                    className="dark:fill-gray-800 dark:stroke-gray-600 transition-colors duration-300"
+                />
+                
+                {/* Kaaba icon - rotates counter to compass to stay upright */}
+                <g transform={`rotate(-${qiblaDirection} 150 38)`}>
+                    <g transform="translate(138, 26)">
+                        <KaabaIcon size={24} isAligned={isAligned} />
+                    </g>
+                </g>
+            </g>
+        );
+    }, [qiblaDirection, isAligned]);
+
     return (
         <div className="flex flex-col items-center justify-center min-h-[80vh] space-y-6 pb-20 px-4">
 
             {/* Header Info Card */}
             <div className="text-center space-y-3">
                 <div className="inline-flex items-center gap-4 px-6 py-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700">
-                    <div className="text-center">
-                        <div className="flex items-center justify-center gap-1.5 mb-1">
-                            <KaabaIcon size={16} isAligned={isAligned} />
+                    <div className="text-left">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <KaabaIcon size={14} isAligned={isAligned} />
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                                 {t('qiblaDirection')}
                             </p>
                         </div>
-                        <p className={`text-3xl font-bold tabular-nums tracking-tight transition-colors duration-300 ${isAligned ? 'text-green-500' : 'text-amber-600 dark:text-amber-500'
+                        <p className={`text-2xl font-bold tabular-nums tracking-tight transition-colors duration-300 ${isAligned ? 'text-green-500' : 'text-primary dark:text-primary-dark'
                             }`}>
                             {qiblaDirection ? `${formatNumber(qiblaDirection.toFixed(0))}°` : '--'}
                         </p>
                     </div>
-                    <div className="w-px h-14 bg-gradient-to-b from-transparent via-gray-200 dark:via-gray-700 to-transparent" />
-                    <div className="text-center">
-                        <div className="flex items-center justify-center gap-1.5 mb-1">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-gray-400">
-                                <path d="M12 2L19 21L12 17L5 21L12 2Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <div className="w-px h-14 bg-gray-200 dark:bg-gray-700" />
+                    <div className="text-left">
+                        <div className="flex items-center gap-1.5 mb-1">
+                            <svg className="w-3 h-3 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <polygon points="12,2 15,9 12,7 9,9" fill="currentColor" />
                             </svg>
                             <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
                                 Heading
                             </p>
                         </div>
-                        <p className="text-3xl font-bold tabular-nums tracking-tight text-gray-700 dark:text-gray-300">
+                        <p className="text-2xl font-bold tabular-nums tracking-tight text-gray-700 dark:text-gray-300">
                             {formatNumber(Math.round(smoothedHeading))}°
                         </p>
                     </div>
                 </div>
                 <p className="text-xs text-gray-400 dark:text-gray-500 flex items-center justify-center gap-1.5">
-                    <LocationPinIcon className="text-green-500" />
+                    <LocationPinIcon className="w-3 h-3" />
                     {settings.location.address || "Current Location"}
                 </p>
             </div>
@@ -399,26 +534,21 @@ const QiblaPage = () => {
             <div className="relative w-[320px] h-[320px] sm:w-[360px] sm:h-[360px]">
 
                 {/* Outer decorative rings */}
-                <div className="absolute -inset-3 rounded-full bg-gradient-to-br from-gray-100 via-gray-200 to-gray-300 dark:from-gray-700 dark:via-gray-800 dark:to-gray-900 shadow-2xl" />
-                <div className="absolute -inset-2 rounded-full bg-gradient-to-br from-white to-gray-100 dark:from-gray-800 dark:to-gray-850" />
-                <div className="absolute -inset-1 rounded-full bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 shadow-inner" />
+                <div className="absolute -inset-3 rounded-full bg-gradient-to-b from-gray-300 to-gray-400 dark:from-gray-600 dark:to-gray-700 opacity-50" />
+                <div className="absolute -inset-2 rounded-full bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 shadow-2xl" />
+                <div className="absolute -inset-1 rounded-full bg-gradient-to-b from-white to-gray-50 dark:from-gray-800 dark:to-gray-900" />
 
                 {/* Main Compass Face */}
-                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 dark:from-gray-850 dark:via-gray-900 dark:to-gray-850 shadow-inner overflow-hidden">
+                <div className={`absolute inset-0 rounded-full shadow-inner overflow-hidden transition-all duration-500 ${isAligned
+                        ? 'bg-gradient-to-br from-green-50 via-white to-green-50 dark:from-gray-800 dark:via-gray-850 dark:to-gray-800'
+                        : 'bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-850 dark:via-gray-900 dark:to-gray-800'
+                    }`}>
 
-                    {/* Concentric circles decoration */}
+                    {/* Concentric circle guides */}
                     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 300 300">
-                        <defs>
-                            <radialGradient id="compassGradient" cx="50%" cy="50%" r="50%">
-                                <stop offset="0%" stopColor="transparent" />
-                                <stop offset="70%" stopColor="rgba(156, 163, 175, 0.05)" />
-                                <stop offset="100%" stopColor="rgba(156, 163, 175, 0.1)" />
-                            </radialGradient>
-                        </defs>
-                        <circle cx="150" cy="150" r="140" fill="url(#compassGradient)" />
-                        <circle cx="150" cy="150" r="130" stroke="rgba(156, 163, 175, 0.15)" strokeWidth="1" fill="none" />
-                        <circle cx="150" cy="150" r="100" stroke="rgba(156, 163, 175, 0.1)" strokeWidth="1" fill="none" />
-                        <circle cx="150" cy="150" r="70" stroke="rgba(156, 163, 175, 0.08)" strokeWidth="1" fill="none" />
+                        <circle cx="150" cy="150" r="130" fill="none" stroke="#e5e7eb" strokeWidth="1" className="dark:stroke-gray-700" />
+                        <circle cx="150" cy="150" r="100" fill="none" stroke="#e5e7eb" strokeWidth="0.5" className="dark:stroke-gray-700" />
+                        <circle cx="150" cy="150" r="70" fill="none" stroke="#e5e7eb" strokeWidth="0.5" className="dark:stroke-gray-700" />
                     </svg>
 
                     {/* Rotating Compass Dial */}
@@ -431,7 +561,7 @@ const QiblaPage = () => {
                         }}
                     >
                         {/* Tick marks */}
-                        {compassTicks}
+                        {ticks}
 
                         {/* Degree markers */}
                         {degreeMarkers}
@@ -439,86 +569,41 @@ const QiblaPage = () => {
                         {/* Cardinal labels */}
                         {cardinalLabels}
 
-                        {/* Qibla Indicator on compass */}
-                        {qiblaDirection !== null && (
-                            <g transform={`rotate(${qiblaDirection} 150 150)`}>
-                                {/* Qibla direction line */}
-                                <line
-                                    x1="150"
-                                    y1="55"
-                                    x2="150"
-                                    y2="42"
-                                    stroke="#f59e0b"
-                                    strokeWidth="3"
-                                    strokeLinecap="round"
-                                    className={`transition-opacity duration-300 ${isAligned ? 'opacity-100' : 'opacity-70'}`}
-                                />
-                                {/* Kaaba icon container */}
-                                <g transform={`translate(150, 26)`}>
-                                    <circle
-                                        cx="0"
-                                        cy="0"
-                                        r="18"
-                                        fill={isAligned ? '#fef3c7' : '#f9fafb'}
-                                        stroke={isAligned ? '#f59e0b' : '#d1d5db'}
-                                        strokeWidth="2"
-                                        className="dark:fill-gray-700 dark:stroke-gray-500 transition-all duration-300"
-                                    />
-                                    {/* Kaaba symbol - counter-rotate to keep upright */}
-                                    <g transform={`rotate(-${qiblaDirection + compassRotation})`}>
-                                        <rect x="-8" y="-8" width="16" height="16" rx="2" fill={isAligned ? '#92400e' : '#374151'} className="dark:fill-gray-300" />
-                                        <rect x="-6" y="-6" width="12" height="3" rx="1" fill={isAligned ? '#fbbf24' : '#6b7280'} />
-                                        <rect x="-2" y="2" width="4" height="6" rx="0.5" fill={isAligned ? '#fbbf24' : '#9ca3af'} />
-                                    </g>
-                                </g>
-                            </g>
-                        )}
+                        {/* Qibla Indicator */}
+                        {qiblaIndicator}
                     </svg>
                 </div>
 
-                {/* Static Direction Pointer (Top) */}
-                <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-20">
+                {/* Static Top Pointer */}
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
                     <div className={`transition-transform duration-300 ${isAligned ? 'scale-110' : 'scale-100'}`}>
-                        <svg width="28" height="40" viewBox="0 0 28 40" fill="none" className="drop-shadow-lg">
-                            <defs>
-                                <linearGradient id="pointerGradient" x1="14" y1="0" x2="14" y2="40" gradientUnits="userSpaceOnUse">
-                                    <stop stopColor={isAligned ? '#10b981' : '#3b82f6'} />
-                                    <stop offset="1" stopColor={isAligned ? '#059669' : '#2563eb'} />
-                                </linearGradient>
-                                <filter id="pointerShadow" x="-4" y="-4" width="36" height="48">
-                                    <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.4" />
-                                </filter>
-                            </defs>
-                            <path
-                                d="M14 0L24 18L14 14L4 18Z"
-                                fill="url(#pointerGradient)"
-                                filter="url(#pointerShadow)"
-                            />
-                            <rect x="11" y="16" width="6" height="22" rx="3" fill="url(#pointerGradient)" filter="url(#pointerShadow)" />
-                            <circle cx="14" cy="27" r="2" fill="white" fillOpacity="0.5" />
-                        </svg>
+                        <CompassNeedleIcon isAligned={isAligned} />
                     </div>
                 </div>
 
-                {/* Center Pivot */}
+                {/* Center Pivot Point */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                    <div className={`relative transition-all duration-300 ${isAligned ? 'scale-105' : 'scale-100'}`}>
-                        {/* Outer glow ring */}
-                        <div className={`absolute inset-0 rounded-full blur-md transition-colors duration-300 ${isAligned ? 'bg-green-400/30' : 'bg-gray-400/20'
-                            }`} style={{ width: '88px', height: '88px', margin: '-8px' }} />
-
-                        {/* Main center housing */}
-                        <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-gray-100 via-white to-gray-200 dark:from-gray-700 dark:via-gray-750 dark:to-gray-800 shadow-xl border-2 border-gray-200 dark:border-gray-600 flex items-center justify-center">
-                            {/* Inner ring */}
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-white to-gray-100 dark:from-gray-800 dark:to-gray-700 shadow-inner flex items-center justify-center border border-gray-200 dark:border-gray-600">
-                                {/* Compass needle in center */}
-                                <div
-                                    className="transition-none"
-                                    style={{
-                                        transform: `rotate(${qiblaAngleOnCompass}deg)`,
-                                    }}
-                                >
-                                    <CompassNeedleIcon isAligned={isAligned} />
+                    <div className="relative">
+                        {/* Outer decorative ring */}
+                        <div className={`w-24 h-24 sm:w-28 sm:h-28 rounded-full shadow-xl border-4 transition-all duration-300 flex items-center justify-center ${isAligned
+                                ? 'bg-gradient-to-br from-green-50 to-green-100 border-green-200 dark:from-green-900/30 dark:to-green-800/30 dark:border-green-700'
+                                : 'bg-gradient-to-br from-white to-gray-100 border-gray-200 dark:from-gray-700 dark:to-gray-800 dark:border-gray-600'
+                            }`}>
+                            {/* Middle ring */}
+                            <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full shadow-inner flex items-center justify-center transition-all duration-300 ${isAligned
+                                    ? 'bg-gradient-to-br from-green-100 to-green-200 dark:from-green-800/50 dark:to-green-900/50'
+                                    : 'bg-gradient-to-br from-gray-50 to-gray-200 dark:from-gray-800 dark:to-gray-700'
+                                }`}>
+                                {/* Inner circle with icon */}
+                                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-all duration-300 shadow-lg ${isAligned
+                                        ? 'bg-green-500 shadow-green-500/40'
+                                        : 'bg-gradient-to-br from-gray-600 to-gray-800 dark:from-gray-500 dark:to-gray-700'
+                                    }`}>
+                                    {isAligned ? (
+                                        <CheckIcon className="w-6 h-6 text-white" />
+                                    ) : (
+                                        <div className="w-3 h-3 rounded-full bg-white/80" />
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -529,7 +614,7 @@ const QiblaPage = () => {
                 {isAligned && (
                     <div className="absolute inset-0 rounded-full pointer-events-none">
                         <div className="absolute inset-0 rounded-full bg-green-500/5 animate-pulse" />
-                        <div className="absolute inset-3 rounded-full border-2 border-green-500/20 animate-ping" style={{ animationDuration: '2s' }} />
+                        <div className="absolute inset-2 rounded-full border-2 border-green-400/20 animate-ping" style={{ animationDuration: '2s' }} />
                     </div>
                 )}
             </div>
@@ -537,15 +622,14 @@ const QiblaPage = () => {
             {/* Status Message */}
             <div className="h-14 flex items-center justify-center">
                 {isAligned ? (
-                    <div className="inline-flex items-center gap-2.5 px-6 py-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 text-green-700 dark:text-green-400 text-sm font-semibold rounded-full shadow-lg border border-green-200 dark:border-green-800">
-                        <CheckCircleIcon className="text-green-500" />
-                        <span>You are facing the Qibla</span>
-                        <KaabaIcon size={18} isAligned={true} />
+                    <div className="inline-flex items-center gap-2.5 px-6 py-3 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 text-sm font-semibold rounded-full shadow-lg border border-green-200 dark:border-green-800">
+                        <CheckIcon className="w-5 h-5" />
+                        You are facing the Qibla
                     </div>
                 ) : (
-                    <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-sm rounded-full border border-gray-200 dark:border-gray-700">
-                        <RotateIcon className="animate-spin-slow" />
-                        <span>Rotate to align with Qibla</span>
+                    <div className="inline-flex items-center gap-2.5 px-5 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-sm rounded-full border border-gray-200 dark:border-gray-700">
+                        <RotateIcon className="w-4 h-4 animate-spin" style={{ animationDuration: '3s' }} />
+                        Rotate to align with Qibla
                     </div>
                 )}
             </div>
@@ -557,26 +641,25 @@ const QiblaPage = () => {
                         onClick={startCompass}
                         className="w-full bg-gradient-to-r from-primary to-blue-600 dark:from-primary-dark dark:to-blue-500 text-white px-6 py-4 rounded-2xl font-semibold shadow-xl shadow-primary/25 hover:shadow-2xl hover:shadow-primary/40 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-3"
                     >
-                        <ShieldIcon />
+                        <ShieldCheckIcon className="w-5 h-5" />
                         Enable Compass
                     </button>
                 )}
 
                 {compassError && (
-                    <div className="flex items-center justify-center gap-2 text-sm text-red-500 dark:text-red-400">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
-                            <path d="M15 9l-6 6M9 9l6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    <p className="text-sm text-red-500 dark:text-red-400 flex items-center justify-center gap-2">
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
                         </svg>
                         {compassError}
-                    </div>
+                    </p>
                 )}
 
-                <div className="bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 rounded-xl p-4 border border-amber-200/50 dark:border-amber-800/50">
+                <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-200 dark:border-amber-800/50">
                     <div className="flex items-start gap-3">
-                        <div className="mt-0.5">
-                            <InfoIcon className="text-amber-500" />
-                        </div>
+                        <InfoIcon className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
                         <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed text-left">
                             Hold your phone flat and horizontal. For best accuracy, move your phone in a figure-8 pattern to calibrate the compass.
                         </p>
