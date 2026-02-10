@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../context/Store';
-import { Moon, Sun, Monitor, Type, Globe, Mic, BookA, MapPin, Loader2, ArrowRight } from 'lucide-react';
+import { Moon, Sun, Monitor, Type, Globe, Mic, BookA, MapPin, Loader2, Search, Crosshair } from 'lucide-react';
 
 const SettingsPage = () => {
   const { settings, updateSettings, t, setHeaderTitle, reciters } = useAppStore();
   const [detecting, setDetecting] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [manualCoords, setManualCoords] = useState({
       lat: settings.location.latitude.toString(),
       lng: settings.location.longitude.toString()
@@ -19,17 +21,41 @@ const SettingsPage = () => {
       setDetecting(true);
       if ("geolocation" in navigator) {
           navigator.geolocation.getCurrentPosition(
-              (position) => {
+              async (position) => {
+                  const { latitude, longitude } = position.coords;
+                  let address = 'Current Location';
+                  
+                  // Reverse Geocoding
+                  try {
+                      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&accept-language=${settings.appLanguage === 'bn' ? 'bn' : 'en'}`);
+                      if (res.ok) {
+                          const data = await res.json();
+                          if (data && data.address) {
+                              // Prioritize city-like fields
+                              address = data.address.city || 
+                                        data.address.town || 
+                                        data.address.village || 
+                                        data.address.municipality ||
+                                        data.address.suburb ||
+                                        data.address.county || 
+                                        data.address.state || 
+                                        'Current Location';
+                          }
+                      }
+                  } catch (e) {
+                      console.error("Reverse geocoding failed", e);
+                  }
+
                   updateSettings({
                       location: {
-                          latitude: position.coords.latitude,
-                          longitude: position.coords.longitude,
-                          address: 'Current Location'
+                          latitude: latitude,
+                          longitude: longitude,
+                          address: address
                       }
                   });
                   setManualCoords({
-                      lat: position.coords.latitude.toString(),
-                      lng: position.coords.longitude.toString()
+                      lat: latitude.toString(),
+                      lng: longitude.toString()
                   });
                   setDetecting(false);
               },
@@ -45,6 +71,46 @@ const SettingsPage = () => {
       }
   };
 
+  const handleSearchLocation = async () => {
+      if (!searchQuery.trim()) return;
+      setIsSearching(true);
+      try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1&accept-language=${settings.appLanguage === 'bn' ? 'bn' : 'en'}`);
+          if (res.ok) {
+              const data = await res.json();
+              if (data && data.length > 0) {
+                  const result = data[0];
+                  const lat = parseFloat(result.lat);
+                  const lng = parseFloat(result.lon);
+                  // Use the display name, but truncated for brevity if needed, or just the first part
+                  const shortName = result.display_name.split(',')[0];
+                  
+                  updateSettings({
+                      location: {
+                          latitude: lat,
+                          longitude: lng,
+                          address: shortName
+                      }
+                  });
+                  setManualCoords({
+                      lat: result.lat,
+                      lng: result.lon
+                  });
+                  setSearchQuery(''); // Clear search on success
+              } else {
+                  alert(t('locationNotFound'));
+              }
+          } else {
+              alert('Error searching location');
+          }
+      } catch (e) {
+          console.error(e);
+          alert('Network error');
+      } finally {
+          setIsSearching(false);
+      }
+  };
+
   const handleManualUpdate = () => {
       const lat = parseFloat(manualCoords.lat);
       const lng = parseFloat(manualCoords.lng);
@@ -53,7 +119,7 @@ const SettingsPage = () => {
               location: {
                   latitude: lat,
                   longitude: lng,
-                  address: 'Custom Location'
+                  address: 'Custom Coordinates'
               }
           });
       }
@@ -69,45 +135,99 @@ const SettingsPage = () => {
             {t('locationSettings')}
         </h2>
         
+        {/* Current Location Badge */}
+        <div className="bg-primary/5 dark:bg-primary/10 border border-primary/10 dark:border-primary/20 p-4 rounded-xl mb-6 flex items-center justify-between">
+            <div>
+                <p className="text-xs text-primary font-bold uppercase tracking-wider mb-1">{t('location')}</p>
+                <p className="font-bold text-gray-900 dark:text-white text-lg leading-tight">
+                    {settings.location.address || 'Unknown Location'}
+                </p>
+                <p className="text-xs text-gray-500 font-mono mt-1">
+                    {settings.location.latitude.toFixed(4)}, {settings.location.longitude.toFixed(4)}
+                </p>
+            </div>
+            <div className="bg-white dark:bg-surface-dark p-2 rounded-full shadow-sm text-primary">
+                <MapPin size={24} />
+            </div>
+        </div>
+
         <div className="space-y-4">
+            {/* City Search */}
+            <div>
+                <label className="text-xs font-medium text-gray-500 mb-1.5 block ml-1">{t('searchLocation')}</label>
+                <div className="flex gap-2">
+                    <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input 
+                            type="text" 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSearchLocation()}
+                            placeholder={t('cityPlaceholder')}
+                            className="w-full pl-10 pr-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                        />
+                    </div>
+                    <button 
+                        onClick={handleSearchLocation}
+                        disabled={isSearching || !searchQuery.trim()}
+                        className="px-4 bg-primary text-white rounded-xl hover:bg-opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                    >
+                        {isSearching ? <Loader2 size={20} className="animate-spin" /> : <Search size={20} />}
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-4 text-xs text-gray-400 font-medium">
+                <div className="h-px bg-gray-100 dark:bg-gray-700 flex-1"></div>
+                OR
+                <div className="h-px bg-gray-100 dark:bg-gray-700 flex-1"></div>
+            </div>
+
+            {/* Detect Location Button */}
             <button 
                 onClick={handleGetCurrentLocation}
                 disabled={detecting}
-                className="w-full flex items-center justify-center gap-2 p-3 bg-secondary text-white rounded-xl font-medium hover:bg-opacity-90 transition disabled:opacity-70"
+                className="w-full flex items-center justify-center gap-2 p-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-xl font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition disabled:opacity-70 text-sm"
             >
-                {detecting ? <Loader2 size={18} className="animate-spin" /> : <MapPin size={18} />}
+                {detecting ? <Loader2 size={18} className="animate-spin" /> : <Crosshair size={18} />}
                 {detecting ? t('detecting') : t('useCurrentLocation')}
             </button>
 
-            <div className="pt-2 border-t border-gray-100 dark:border-gray-700">
-                <p className="text-xs text-gray-500 mb-3 font-medium uppercase">{t('setManually')}</p>
-                <div className="grid grid-cols-2 gap-3">
-                    <div>
-                        <label className="text-xs text-gray-400 mb-1 block">{t('latitude')}</label>
-                        <input 
-                            type="text" 
-                            value={manualCoords.lat}
-                            onChange={(e) => setManualCoords({...manualCoords, lat: e.target.value})}
-                            className="w-full p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm"
-                        />
+            {/* Manual Coordinates Toggle */}
+            <details className="group pt-2">
+                <summary className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-500 hover:text-primary transition select-none">
+                    <span className="group-open:rotate-90 transition-transform">▶</span>
+                    {t('manualCoordinates')}
+                </summary>
+                <div className="mt-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700/50">
+                    <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">{t('latitude')}</label>
+                            <input 
+                                type="text" 
+                                value={manualCoords.lat}
+                                onChange={(e) => setManualCoords({...manualCoords, lat: e.target.value})}
+                                className="w-full p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm focus:ring-1 focus:ring-primary outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] text-gray-400 mb-1 block uppercase font-bold">{t('longitude')}</label>
+                            <input 
+                                type="text" 
+                                value={manualCoords.lng}
+                                onChange={(e) => setManualCoords({...manualCoords, lng: e.target.value})}
+                                className="w-full p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm focus:ring-1 focus:ring-primary outline-none"
+                            />
+                        </div>
                     </div>
-                    <div>
-                        <label className="text-xs text-gray-400 mb-1 block">{t('longitude')}</label>
-                        <input 
-                            type="text" 
-                            value={manualCoords.lng}
-                            onChange={(e) => setManualCoords({...manualCoords, lng: e.target.value})}
-                            className="w-full p-2 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-sm"
-                        />
-                    </div>
+                    <button 
+                        onClick={handleManualUpdate}
+                        className="w-full py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-bold hover:bg-gray-50 dark:hover:bg-gray-600 transition"
+                    >
+                        {t('update')}
+                    </button>
                 </div>
-                <button 
-                    onClick={handleManualUpdate}
-                    className="mt-3 w-full py-2 bg-gray-100 dark:bg-gray-800 text-primary dark:text-primary-dark rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-                >
-                    {t('update')}
-                </button>
-            </div>
+            </details>
         </div>
       </section>
 
