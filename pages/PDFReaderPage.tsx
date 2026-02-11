@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as pdfjsLib from 'pdfjs-dist';
 import { useAppStore } from '../context/Store';
 import { namazBooks } from '../utils/namazBooks';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, ArrowLeft, Loader2, ExternalLink, AlertCircle, FileText, ScrollText, RectangleHorizontal, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, ArrowLeft, Loader2, AlertCircle, FileText, ScrollText, RectangleHorizontal } from 'lucide-react';
 
 // --- Helper: Render Page Function ---
 const renderPdfPage = async (
@@ -15,6 +16,7 @@ const renderPdfPage = async (
 ) => {
     if (!pdfDoc || !canvas) return;
 
+    // Cancel any pending render task for this canvas
     if (currentTaskRef.current) {
         currentTaskRef.current.cancel();
     }
@@ -26,6 +28,7 @@ const renderPdfPage = async (
         
         if (!context) return;
 
+        // High DPI Rendering
         const outputScale = window.devicePixelRatio || 1;
 
         canvas.width = Math.floor(viewport.width * outputScale);
@@ -54,244 +57,35 @@ const renderPdfPage = async (
     }
 };
 
-// --- Touch Gesture Hook ---
-interface GestureState {
-    scale: number;
-    x: number;
-    y: number;
-}
-
-const useTouchGestures = (
-    containerRef: React.RefObject<HTMLDivElement>,
-    contentRef: React.RefObject<HTMLDivElement>,
-    enabled: boolean = true
-) => {
-    const [transform, setTransform] = useState<GestureState>({ scale: 1, x: 0, y: 0 });
-    const [isGesturing, setIsGesturing] = useState(false);
-    
-    const gestureRef = useRef({
-        type: 'none' as 'none' | 'pinch' | 'pan',
-        startDist: 0,
-        startScale: 1,
-        startX: 0,
-        startY: 0,
-        startTransformX: 0,
-        startTransformY: 0,
-        centerX: 0,
-        centerY: 0,
-        lastScale: 1
-    });
-
-    const getDistance = useCallback((t1: React.Touch, t2: React.Touch) => {
-        return Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-    }, []);
-
-    const getCenter = useCallback((t1: React.Touch, t2: React.Touch) => ({
-        x: (t1.clientX + t2.clientX) / 2,
-        y: (t1.clientY + t2.clientY) / 2
-    }), []);
-
-    const handleTouchStart = useCallback((e: React.TouchEvent) => {
-        if (!enabled) return;
-
-        if (e.touches.length === 2) {
-            e.preventDefault();
-            const t1 = e.touches[0];
-            const t2 = e.touches[1];
-            const dist = getDistance(t1, t2);
-            const center = getCenter(t1, t2);
-            
-            gestureRef.current = {
-                type: 'pinch',
-                startDist: dist,
-                startScale: transform.scale,
-                startX: 0,
-                startY: 0,
-                startTransformX: transform.x,
-                startTransformY: transform.y,
-                centerX: center.x,
-                centerY: center.y,
-                lastScale: transform.scale
-            };
-            setIsGesturing(true);
-        } else if (e.touches.length === 1 && transform.scale > 1) {
-            gestureRef.current = {
-                ...gestureRef.current,
-                type: 'pan',
-                startX: e.touches[0].clientX,
-                startY: e.touches[0].clientY,
-                startTransformX: transform.x,
-                startTransformY: transform.y
-            };
-            setIsGesturing(true);
-        }
-    }, [enabled, transform, getDistance, getCenter]);
-
-    const handleTouchMove = useCallback((e: React.TouchEvent) => {
-        if (!enabled) return;
-        
-        const gesture = gestureRef.current;
-
-        if (gesture.type === 'pinch' && e.touches.length === 2) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const t1 = e.touches[0];
-            const t2 = e.touches[1];
-            const dist = getDistance(t1, t2);
-            const center = getCenter(t1, t2);
-            
-            // Calculate new scale
-            const scaleRatio = dist / gesture.startDist;
-            const newScale = Math.max(0.5, Math.min(gesture.startScale * scaleRatio, 5));
-            
-            // Calculate translation to zoom toward pinch center
-            const containerRect = containerRef.current?.getBoundingClientRect();
-            if (containerRect) {
-                const containerCenterX = containerRect.width / 2;
-                const containerCenterY = containerRect.height / 2;
-                
-                // Distance from pinch center to container center
-                const pinchOffsetX = gesture.centerX - containerRect.left - containerCenterX;
-                const pinchOffsetY = gesture.centerY - containerRect.top - containerCenterY;
-                
-                // Scale the offset difference
-                const scaleChange = newScale / gesture.startScale;
-                const newX = gesture.startTransformX + (center.x - gesture.centerX) - pinchOffsetX * (scaleChange - 1);
-                const newY = gesture.startTransformY + (center.y - gesture.centerY) - pinchOffsetY * (scaleChange - 1);
-                
-                setTransform({
-                    scale: newScale,
-                    x: newX,
-                    y: newY
-                });
-            }
-        } else if (gesture.type === 'pan' && e.touches.length === 1) {
-            e.preventDefault();
-            
-            const deltaX = e.touches[0].clientX - gesture.startX;
-            const deltaY = e.touches[0].clientY - gesture.startY;
-            
-            // Apply bounds based on zoom level
-            const containerRect = containerRef.current?.getBoundingClientRect();
-            const contentRect = contentRef.current?.getBoundingClientRect();
-            
-            if (containerRect && contentRect) {
-                const maxX = Math.max(0, (contentRect.width * transform.scale - containerRect.width) / 2);
-                const maxY = Math.max(0, (contentRect.height * transform.scale - containerRect.height) / 2);
-                
-                const newX = Math.max(-maxX, Math.min(maxX, gesture.startTransformX + deltaX));
-                const newY = Math.max(-maxY, Math.min(maxY, gesture.startTransformY + deltaY));
-                
-                setTransform(prev => ({
-                    ...prev,
-                    x: newX,
-                    y: newY
-                }));
-            } else {
-                setTransform(prev => ({
-                    ...prev,
-                    x: gesture.startTransformX + deltaX,
-                    y: gesture.startTransformY + deltaY
-                }));
-            }
-        }
-    }, [enabled, transform.scale, getDistance, getCenter, containerRef, contentRef]);
-
-    const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-        if (!enabled) return;
-        
-        // If going from 2 fingers to 1, start pan mode
-        if (e.touches.length === 1 && gestureRef.current.type === 'pinch' && transform.scale > 1) {
-            gestureRef.current = {
-                ...gestureRef.current,
-                type: 'pan',
-                startX: e.touches[0].clientX,
-                startY: e.touches[0].clientY,
-                startTransformX: transform.x,
-                startTransformY: transform.y
-            };
-            return;
-        }
-        
-        if (e.touches.length === 0) {
-            // Snap back if scale is close to 1
-            if (transform.scale <= 1.05) {
-                setTransform({ scale: 1, x: 0, y: 0 });
-            }
-            
-            gestureRef.current.type = 'none';
-            setIsGesturing(false);
-        }
-    }, [enabled, transform]);
-
-    const resetTransform = useCallback(() => {
-        setTransform({ scale: 1, x: 0, y: 0 });
-        setIsGesturing(false);
-        gestureRef.current.type = 'none';
-    }, []);
-
-    const zoomIn = useCallback(() => {
-        setTransform(prev => ({
-            ...prev,
-            scale: Math.min(5, prev.scale + 0.5)
-        }));
-    }, []);
-
-    const zoomOut = useCallback(() => {
-        const newScale = Math.max(0.5, transform.scale - 0.5);
-        if (newScale <= 1) {
-            setTransform({ scale: 1, x: 0, y: 0 });
-        } else {
-            setTransform(prev => ({ ...prev, scale: newScale }));
-        }
-    }, [transform.scale]);
-
-    return {
-        transform,
-        isGesturing,
-        handlers: {
-            onTouchStart: handleTouchStart,
-            onTouchMove: handleTouchMove,
-            onTouchEnd: handleTouchEnd
-        },
-        resetTransform,
-        zoomIn,
-        zoomOut,
-        isZoomed: transform.scale > 1
-    };
-};
-
 // --- Sub-Component: Lazy Page for Scroll Mode ---
 const LazyPdfPage = ({ 
     pdfDoc, 
     pageNum, 
     scale, 
-    onVisible,
-    transform,
-    isGesturing
+    onVisible 
 }: { 
     pdfDoc: any, 
     pageNum: number, 
     scale: number, 
-    onVisible: (num: number) => void,
-    transform: GestureState,
-    isGesturing: boolean
+    onVisible: (num: number) => void 
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const renderTaskRef = useRef<any>(null);
     const [isVisible, setIsVisible] = useState(false);
     
+    // Intersection Observer to detect visibility
     useEffect(() => {
         const observer = new IntersectionObserver(
             ([entry]) => {
                 if (entry.isIntersecting) {
                     setIsVisible(true);
                     onVisible(pageNum);
+                } else {
+                    // Keep visible once loaded to prevent stutter, or implement virtual windowing for huge docs
                 }
             },
-            { rootMargin: '100% 0px', threshold: 0.01 }
+            { rootMargin: '50% 0px', threshold: 0.01 } 
         );
 
         if (wrapperRef.current) {
@@ -301,32 +95,24 @@ const LazyPdfPage = ({
         return () => observer.disconnect();
     }, [pageNum, onVisible]);
 
+    // Render when visible or scale changes
     useEffect(() => {
-        if (isVisible && pdfDoc) {
+        if (isVisible && pdfDoc && scale) {
             renderPdfPage(pdfDoc, pageNum, scale, canvasRef.current!, renderTaskRef);
         }
     }, [isVisible, pdfDoc, pageNum, scale]);
-
-    const pageTransformStyle: React.CSSProperties = {
-        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
-        transformOrigin: 'center top',
-        transition: isGesturing ? 'none' : 'transform 0.2s ease-out',
-        willChange: isGesturing ? 'transform' : 'auto'
-    };
 
     return (
         <div 
             ref={wrapperRef} 
             id={`page-container-${pageNum}`}
-            className="flex justify-center my-4 min-h-[300px] relative overflow-visible"
+            className="flex justify-center my-4 min-h-[100px] relative transition-all duration-200"
+            style={{ minHeight: scale ? 200 * scale : 300 }} // Approximate placeholder height
         >
-            <div 
-                className="relative shadow-lg bg-white"
-                style={pageTransformStyle}
-            >
+            <div className="relative shadow-lg bg-white">
                 <canvas ref={canvasRef} className="block bg-white" />
                 {!isVisible && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-50 border border-gray-200 text-gray-400 text-xs min-w-[200px] min-h-[300px]">
+                    <div className="absolute inset-0 flex items-center justify-center bg-gray-50 border border-gray-200 text-gray-400 text-xs">
                         Page {pageNum}
                     </div>
                 )}
@@ -338,7 +124,7 @@ const LazyPdfPage = ({
 const PDFReaderPage = () => {
   const { bookId } = useParams<{ bookId: string }>();
   const navigate = useNavigate();
-  const { t, settings, formatNumber } = useAppStore();
+  const { settings, formatNumber } = useAppStore();
   
   // States
   const [loading, setLoading] = useState(true);
@@ -351,24 +137,36 @@ const PDFReaderPage = () => {
   const [pdfDoc, setPdfDoc] = useState<any | null>(null);
   const [pageNum, setPageNum] = useState(1);
   const [numPages, setNumPages] = useState(0);
-  const [renderScale, setRenderScale] = useState<number | null>(null); 
+  const [scale, setScale] = useState<number | null>(null); 
   const [pageInput, setPageInput] = useState("1");
   
+  // Interaction State (Single Mode)
+  const transformRef = useRef({ x: 0, y: 0, scale: 1 });
+  const touchStateRef = useRef<{
+      distance: number | null;
+      startScale: number;
+      startX: number;
+      startY: number;
+      lastX: number;
+      lastY: number;
+      isPanning: boolean;
+  }>({
+      distance: null,
+      startScale: 1,
+      startX: 0,
+      startY: 0,
+      lastX: 0,
+      lastY: 0,
+      isPanning: false
+  });
+
   // Refs
   const singleCanvasRef = useRef<HTMLCanvasElement>(null);
   const singleRenderTaskRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const scrollContentRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Touch gesture hooks for both modes
-  const singleViewGestures = useTouchGestures(containerRef, contentRef, viewMode === 'single' && !loading);
-  const scrollViewGestures = useTouchGestures(scrollContainerRef, scrollContentRef, viewMode === 'scroll' && !loading);
-  
-  // Get current gesture handler based on mode
-  const currentGestures = viewMode === 'single' ? singleViewGestures : scrollViewGestures;
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const book = namazBooks.find(b => b.id === bookId);
 
@@ -385,27 +183,26 @@ const PDFReaderPage = () => {
       setPageInput(pageNum.toString());
   }, [pageNum]);
 
-  // Reset gesture transform when changing pages or view mode
+  // Initial Auto-Fit Logic
   useEffect(() => {
-      singleViewGestures.resetTransform();
-      scrollViewGestures.resetTransform();
-  }, [pageNum, viewMode]);
-
-  // Safety Timeout
-  useEffect(() => {
-      if (loading && !useFallbackViewer) {
-          const manualTimer = setTimeout(() => setShowManualFallback(true), 3000);
-          const autoTimer = setTimeout(() => {
-              console.warn("PDF load timeout.");
-              setUseFallbackViewer(true);
-              setLoading(false);
-          }, 15000);
-          return () => {
-              clearTimeout(manualTimer);
-              clearTimeout(autoTimer);
+      if (pdfDoc && !scale) {
+          const fit = async () => {
+              try {
+                  const page = await pdfDoc.getPage(1);
+                  const viewport = page.getViewport({ scale: 1 });
+                  // Use window innerWidth as reliable fallback for mobile initial render
+                  const availableWidth = containerRef.current?.clientWidth || window.innerWidth;
+                  const targetWidth = Math.min(availableWidth - 32, 800); 
+                  const newScale = targetWidth / viewport.width;
+                  setScale(newScale);
+              } catch (e) {
+                  console.error("Auto fit failed", e);
+                  setScale(1);
+              }
           };
+          fit();
       }
-  }, [loading, useFallbackViewer]);
+  }, [pdfDoc, scale]);
 
   // Fetch Logic
   useEffect(() => {
@@ -426,35 +223,24 @@ const PDFReaderPage = () => {
 
       for (const strategy of strategies) {
         if (!active) return;
-        
         try {
-          console.log(`Attempting fetch via ${strategy.name}...`);
           const timeoutId = setTimeout(() => controller.abort(), 10000); 
-          
-          const response = await fetch(strategy.url, { 
-            signal: controller.signal,
-            cache: 'no-store'
-          });
-          
+          const response = await fetch(strategy.url, { signal: controller.signal, cache: 'no-store' });
           clearTimeout(timeoutId);
 
           if (!response.ok) continue;
-
           const blob = await response.blob();
-          
           if (blob.size < 500 || blob.type.includes('text/html')) continue;
 
           if (active) {
             const arrayBuffer = await blob.arrayBuffer();
             const pdfjs: any = (pdfjsLib as any).default || pdfjsLib;
-            
             try {
                 const loadingTask = pdfjs.getDocument({
                     data: arrayBuffer,
                     cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
                     cMapPacked: true,
                 });
-
                 const pdf = await loadingTask.promise;
                 setPdfDoc(pdf);
                 setNumPages(pdf.numPages);
@@ -469,57 +255,201 @@ const PDFReaderPage = () => {
           if (err.name === 'AbortError') return;
         }
       }
-
       if (active) {
         setUseFallbackViewer(true);
         setLoading(false);
       }
     };
-
     fetchPdf();
-
     return () => {
       active = false;
       controller.abort();
     };
   }, [book]);
 
-  // --- Single View Rendering ---
+  // --- Single View Render ---
   useEffect(() => {
-    if (viewMode !== 'single') return;
+    if (viewMode !== 'single' || !scale) return; 
 
     const renderSinglePage = async () => {
-      if (!pdfDoc || !singleCanvasRef.current || !containerRef.current) return;
-      
+      if (!pdfDoc || !singleCanvasRef.current) return;
       setRendering(true);
-
       try {
-        const page = await pdfDoc.getPage(pageNum);
+        // In Single Mode, we render at a fixed high quality (or current scale)
+        // and allow CSS to handle the user zooming interaction to prevent flickering
+        // We render slightly larger for crispness if user zooms in a bit
+        await renderPdfPage(pdfDoc, pageNum, scale, singleCanvasRef.current, singleRenderTaskRef);
         
-        let currentScale = renderScale;
-
-        if (currentScale === null) {
-            const unscaledViewport = page.getViewport({ scale: 1 });
-            const containerWidth = containerRef.current.clientWidth;
-            const targetWidth = Math.min(containerWidth - 32, 800); 
-            const newScale = targetWidth / unscaledViewport.width;
-            currentScale = Math.max(0.5, Math.min(newScale, 2.0));
-            setRenderScale(currentScale);
+        // Reset transform on page change
+        transformRef.current = { x: 0, y: 0, scale: 1 };
+        if (contentRef.current) {
+            contentRef.current.style.transform = `translate3d(0px, 0px, 0) scale(1)`;
         }
-
-        await renderPdfPage(pdfDoc, pageNum, currentScale, singleCanvasRef.current, singleRenderTaskRef);
-        
-      } catch (err: any) {
-          console.error("Render error", err);
+      } catch (err) {
+          console.error(err);
       } finally {
           setRendering(false);
       }
     };
-
     renderSinglePage();
-  }, [pdfDoc, pageNum, renderScale, viewMode]);
+  }, [pdfDoc, pageNum, scale, viewMode]);
 
-  // --- Scroll Mode Helpers ---
+  // --- INTERACTION HANDLERS ---
+
+  // Helper to update CSS transform
+  const updateTransform = () => {
+      if (contentRef.current) {
+          const { x, y, scale } = transformRef.current;
+          contentRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+      }
+  };
+
+  // Helper distance
+  const getDistance = (touches: React.TouchList) => {
+      return Math.hypot(
+          touches[0].clientX - touches[1].clientX,
+          touches[0].clientY - touches[1].clientY
+      );
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+      if (viewMode === 'scroll') {
+          // Scroll Mode Logic
+          if (e.touches.length === 2) {
+              touchStateRef.current.distance = getDistance(e.touches);
+              touchStateRef.current.startScale = scale || 1;
+          }
+      } else {
+          // Single Mode Logic
+          if (e.touches.length === 1) {
+              touchStateRef.current.isPanning = true;
+              touchStateRef.current.startX = e.touches[0].clientX;
+              touchStateRef.current.startY = e.touches[0].clientY;
+              touchStateRef.current.lastX = transformRef.current.x;
+              touchStateRef.current.lastY = transformRef.current.y;
+          } else if (e.touches.length === 2) {
+              touchStateRef.current.isPanning = false;
+              touchStateRef.current.distance = getDistance(e.touches);
+              touchStateRef.current.startScale = transformRef.current.scale;
+          }
+      }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+      if (viewMode === 'scroll') {
+          // Scroll Mode: Pinch adjusts global scale
+          if (e.touches.length === 2 && touchStateRef.current.distance) {
+              e.preventDefault(); // Prevent browser zoom
+              const dist = getDistance(e.touches);
+              const ratio = dist / touchStateRef.current.distance;
+              const newScale = Math.max(0.5, Math.min(touchStateRef.current.startScale * ratio, 3.0));
+              setScale(newScale);
+          }
+      } else {
+          // Single Mode: Pan & CSS Zoom
+          e.preventDefault(); 
+          if (e.touches.length === 1 && touchStateRef.current.isPanning) {
+              // Pan
+              const dx = e.touches[0].clientX - touchStateRef.current.startX;
+              const dy = e.touches[0].clientY - touchStateRef.current.startY;
+              
+              // Only allow panning if zoomed in or scale > 1
+              // But for UX feel, we allow slight elasticity
+              transformRef.current.x = touchStateRef.current.lastX + dx;
+              transformRef.current.y = touchStateRef.current.lastY + dy;
+              updateTransform();
+
+          } else if (e.touches.length === 2 && touchStateRef.current.distance) {
+              // Pinch
+              const dist = getDistance(e.touches);
+              const ratio = dist / touchStateRef.current.distance;
+              const newScale = Math.max(1, Math.min(touchStateRef.current.startScale * ratio, 4.0));
+              
+              transformRef.current.scale = newScale;
+              updateTransform();
+          }
+      }
+  };
+
+  const handleTouchEnd = () => {
+      if (viewMode === 'single') {
+          // Snap back logic for Single Mode
+          const { scale, x, y } = transformRef.current;
+          
+          let newScale = scale;
+          let newX = x;
+          let newY = y;
+
+          // 1. Min Scale Constraint
+          if (scale < 1) {
+              newScale = 1;
+              newX = 0;
+              newY = 0;
+          }
+
+          // 2. Bounds Constraint (simple centering if smaller than viewport, or clamping if larger)
+          if (newScale === 1) {
+              newX = 0;
+              newY = 0;
+          } else {
+              // Simple bound logic: ensure user can't pan page completely off screen
+              // For robustness, usually requires comparing content width vs container width
+              // Here we just prevent extreme fly-away
+              const limitX = 200 * newScale; // Loose limit
+              const limitY = 300 * newScale;
+              if (newX > limitX) newX = limitX;
+              if (newX < -limitX) newX = -limitX;
+              if (newY > limitY) newY = limitY;
+              if (newY < -limitY) newY = -limitY;
+          }
+
+          // Animate back if needed
+          if (newScale !== scale || newX !== x || newY !== y) {
+              if (contentRef.current) {
+                  contentRef.current.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
+                  transformRef.current = { x: newX, y: newY, scale: newScale };
+                  updateTransform();
+                  setTimeout(() => {
+                      if (contentRef.current) contentRef.current.style.transition = 'none';
+                  }, 300);
+              }
+          }
+      }
+      
+      // Reset interaction state
+      touchStateRef.current.distance = null;
+      touchStateRef.current.isPanning = false;
+  };
+
+  const handleDoubleTap = () => {
+      if (viewMode === 'single') {
+          if (transformRef.current.scale > 1) {
+              // Reset
+              if (contentRef.current) {
+                  contentRef.current.style.transition = 'transform 0.3s ease';
+                  transformRef.current = { x: 0, y: 0, scale: 1 };
+                  updateTransform();
+                  setTimeout(() => {
+                      if(contentRef.current) contentRef.current.style.transition = 'none';
+                  }, 300);
+              }
+          } else {
+              // Zoom In
+              if (contentRef.current) {
+                  contentRef.current.style.transition = 'transform 0.3s ease';
+                  transformRef.current = { x: 0, y: 0, scale: 2 };
+                  updateTransform();
+                  setTimeout(() => {
+                      if(contentRef.current) contentRef.current.style.transition = 'none';
+                  }, 300);
+              }
+          }
+      } else {
+          // Scroll Mode: Reset global scale
+          setScale(s => (s && s > 1.5) ? 1 : 1.5);
+      }
+  };
+
   const handleScrollPageVisible = useCallback((visiblePageNum: number) => {
       setPageNum(visiblePageNum);
   }, []);
@@ -535,9 +465,66 @@ const PDFReaderPage = () => {
       }
   };
 
-  const handleZoomIn = () => currentGestures.zoomIn();
-  const handleZoomOut = () => currentGestures.zoomOut();
-  const handleResetZoom = () => currentGestures.resetTransform();
+  // Nav Handlers
+  const goNext = () => {
+      const next = Math.min(numPages, pageNum + 1);
+      scrollToPage(next);
+  };
+  
+  const goPrev = () => {
+      const prev = Math.max(1, pageNum - 1);
+      scrollToPage(prev);
+  };
+
+  // Zoom Button Handlers
+  const handleZoomIn = () => {
+      if (viewMode === 'single') {
+          transformRef.current.scale = Math.min(transformRef.current.scale + 0.5, 4);
+          if (contentRef.current) {
+              contentRef.current.style.transition = 'transform 0.2s ease';
+              updateTransform();
+              setTimeout(() => { if(contentRef.current) contentRef.current.style.transition = 'none'; }, 200);
+          }
+      } else {
+          setScale(s => Math.min(3.0, (s || 1) + 0.25));
+      }
+  };
+
+  const handleZoomOut = () => {
+      if (viewMode === 'single') {
+          transformRef.current.scale = Math.max(transformRef.current.scale - 0.5, 1);
+          // Recenter if back to 1
+          if (transformRef.current.scale === 1) {
+              transformRef.current.x = 0;
+              transformRef.current.y = 0;
+          }
+          if (contentRef.current) {
+              contentRef.current.style.transition = 'transform 0.2s ease';
+              updateTransform();
+              setTimeout(() => { if(contentRef.current) contentRef.current.style.transition = 'none'; }, 200);
+          }
+      } else {
+          setScale(s => Math.max(0.5, (s || 1) - 0.25));
+      }
+  };
+
+  const toggleViewMode = () => {
+      const newMode = viewMode === 'single' ? 'scroll' : 'single';
+      setViewMode(newMode);
+      // Reset scale when switching to avoid huge/tiny pages in new mode
+      if (newMode === 'scroll') {
+          // Recalculate auto-fit for scroll
+          setScale(null);
+      } else {
+          // Recalculate auto-fit for single
+          setScale(null);
+      }
+      setTimeout(() => {
+          if (newMode === 'scroll') {
+              scrollToPage(pageNum);
+          }
+      }, 100);
+  };
 
   const handlePageSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -550,38 +537,9 @@ const PDFReaderPage = () => {
       inputRef.current?.blur();
   };
 
-  const handlePageBlur = () => {
-      const val = parseInt(pageInput);
-      if (!isNaN(val) && val >= 1 && val <= numPages) {
-          scrollToPage(val);
-      } else {
-          setPageInput(pageNum.toString());
-      }
-  };
-
-  const goNext = () => {
-      const next = Math.min(numPages, pageNum + 1);
-      scrollToPage(next);
-  };
-  
-  const goPrev = () => {
-      const prev = Math.max(1, pageNum - 1);
-      scrollToPage(prev);
-  };
-
-  const toggleViewMode = () => {
-      const newMode = viewMode === 'single' ? 'scroll' : 'single';
-      setViewMode(newMode);
-      setTimeout(() => {
-          if (newMode === 'scroll') {
-              scrollToPage(pageNum);
-          }
-      }, 100);
-  };
-
   if (!book) return <div>Book not found</div>;
 
-  // Fallback Viewer UI (Google Docs)
+  // Fallback Viewer UI
   if (useFallbackViewer) {
       return (
         <div className="fixed inset-0 z-50 bg-gray-100 dark:bg-gray-900 flex flex-col h-full">
@@ -593,7 +551,6 @@ const PDFReaderPage = () => {
                     {settings.appLanguage === 'bn' ? book.title_bn : book.title_en}
                 </div>
              </div>
-             
              <div className="bg-amber-50 text-amber-800 px-4 py-2 text-xs text-center border-b border-amber-100 flex items-center justify-center gap-2">
                 <AlertCircle size={14} />
                 Using Simple Viewer
@@ -609,15 +566,6 @@ const PDFReaderPage = () => {
       );
   }
 
-  // Transform styles
-  const singleTransformStyle: React.CSSProperties = {
-      transform: `translate(${singleViewGestures.transform.x}px, ${singleViewGestures.transform.y}px) scale(${singleViewGestures.transform.scale})`,
-      transformOrigin: 'center top',
-      transition: singleViewGestures.isGesturing ? 'none' : 'transform 0.2s ease-out',
-      willChange: singleViewGestures.isGesturing ? 'transform' : 'auto'
-  };
-
-  // Custom PDF Viewer UI
   return (
     <div className="fixed inset-0 z-50 bg-gray-100/90 dark:bg-gray-900/90 backdrop-blur-sm flex flex-col h-full">
       
@@ -630,7 +578,6 @@ const PDFReaderPage = () => {
                 <h1 className="flex-1 text-center font-bold text-sm text-gray-900 dark:text-white truncate px-2">
                     {settings.appLanguage === 'bn' ? book.title_bn : book.title_en}
                 </h1>
-                
                 <button 
                     onClick={toggleViewMode}
                     className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition text-primary"
@@ -647,38 +594,30 @@ const PDFReaderPage = () => {
           <div 
             className="flex-1 overflow-hidden relative pt-20 pb-24 touch-none"
             ref={containerRef}
-            {...singleViewGestures.handlers}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onDoubleClick={handleDoubleTap}
           >
             {loading && (
-                <div className="absolute inset-0 flex items-center justify-center z-10">
+                <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
                     <div className="flex flex-col items-center gap-4 bg-white/90 dark:bg-surface-dark/90 p-6 rounded-2xl shadow-xl backdrop-blur-sm">
                         <Loader2 size={32} className="animate-spin text-primary" />
                         <div className="text-center">
                             <p className="text-sm font-semibold text-gray-900 dark:text-white">Downloading Book...</p>
-                            <p className="text-xs text-gray-500 mt-1">Please wait a moment</p>
                         </div>
-                        {showManualFallback && (
-                            <button 
-                                onClick={() => { setUseFallbackViewer(true); setLoading(false); }}
-                                className="mt-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 transition flex items-center gap-2"
-                            >
-                                <FileText size={12} />
-                                Use Simple Viewer
-                            </button>
-                        )}
                     </div>
                 </div>
             )}
 
-            {/* Single Page Render with Touch Transform */}
+            {/* Render Canvas Container */}
             <div 
                 ref={contentRef}
-                className={`flex justify-center min-h-full items-start transition-opacity duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}
-                style={singleTransformStyle}
+                className="flex justify-center items-center min-h-full transition-opacity duration-300 origin-center"
+                style={{ opacity: loading ? 0 : 1 }}
             >
                 <div className="relative shadow-2xl rounded-sm overflow-hidden bg-white">
                     <canvas ref={singleCanvasRef} className="block" />
-                    
                     {rendering && (
                         <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
                             <Loader2 size={24} className="animate-spin text-primary" />
@@ -686,22 +625,16 @@ const PDFReaderPage = () => {
                     )}
                 </div>
             </div>
-
-            {/* Zoom indicator when zoomed */}
-            {singleViewGestures.isZoomed && (
-                <div className="absolute top-24 left-1/2 -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
-                    {Math.round(singleViewGestures.transform.scale * 100)}%
-                </div>
-            )}
           </div>
       ) : (
           // --- Scroll View ---
           <div 
-            className={`flex-1 relative pt-20 pb-24 px-4 bg-gray-100 dark:bg-gray-900 ${
-                scrollViewGestures.isZoomed ? 'overflow-hidden touch-none' : 'overflow-y-auto'
-            }`}
+            className="flex-1 overflow-y-auto relative pt-20 pb-24 px-4 bg-gray-100 dark:bg-gray-900 touch-pan-y"
             ref={scrollContainerRef}
-            {...scrollViewGestures.handlers}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onDoubleClick={handleDoubleTap}
           >
              {loading ? (
                  <div className="flex flex-col items-center justify-center h-full gap-4">
@@ -709,36 +642,25 @@ const PDFReaderPage = () => {
                      <p className="text-sm text-gray-500">Preparing Scroll View...</p>
                  </div>
              ) : (
-                 <div 
-                    className="max-w-4xl mx-auto"
-                    ref={scrollContentRef}
-                 >
+                 <div className="max-w-4xl mx-auto origin-top">
+                     {/* Render List of Pages */}
                      {Array.from({ length: numPages }, (_, i) => (
                          <LazyPdfPage 
                             key={i + 1} 
                             pdfDoc={pdfDoc} 
                             pageNum={i + 1} 
-                            scale={renderScale || 1}
+                            scale={scale || 1}
                             onVisible={handleScrollPageVisible}
-                            transform={scrollViewGestures.transform}
-                            isGesturing={scrollViewGestures.isGesturing}
                          />
                      ))}
                  </div>
-             )}
-
-             {/* Zoom indicator when zoomed */}
-             {scrollViewGestures.isZoomed && (
-                <div className="fixed top-24 left-1/2 -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm z-30">
-                    {Math.round(scrollViewGestures.transform.scale * 100)}%
-                </div>
              )}
           </div>
       )}
 
       {/* Floating Bottom Controls */}
       <div className="absolute bottom-6 left-0 right-0 z-20 flex justify-center px-4 pointer-events-none">
-         <div className="bg-white/90 dark:bg-surface-dark/90 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg rounded-2xl p-2 flex items-center gap-3 pointer-events-auto">
+         <div className="bg-white/90 dark:bg-surface-dark/90 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg rounded-2xl p-2 flex items-center gap-4 pointer-events-auto">
              
              {/* Page Nav */}
              <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
@@ -750,6 +672,7 @@ const PDFReaderPage = () => {
                      <ChevronLeft size={18} />
                  </button>
                  
+                 {/* Page Input */}
                  <form 
                     onSubmit={handlePageSubmit}
                     className="flex items-center justify-center gap-1 min-w-[4rem] px-2"
@@ -760,7 +683,11 @@ const PDFReaderPage = () => {
                         inputMode="numeric"
                         value={pageInput}
                         onChange={(e) => setPageInput(e.target.value)}
-                        onBlur={handlePageBlur}
+                        onBlur={() => {
+                            // Only update if changed
+                            const val = parseInt(pageInput);
+                            if (!isNaN(val) && val !== pageNum) handlePageSubmit({ preventDefault: () => {} } as any);
+                        }}
                         onFocus={(e) => e.target.select()}
                         className="w-8 text-center bg-transparent font-bold font-mono text-gray-900 dark:text-gray-100 focus:outline-none focus:bg-white dark:focus:bg-gray-700 focus:ring-2 focus:ring-primary/50 rounded-md py-0.5 text-sm"
                     />
@@ -782,27 +709,13 @@ const PDFReaderPage = () => {
              <div className="flex items-center gap-1">
                  <button 
                     onClick={handleZoomOut}
-                    className="p-2 text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white transition active:scale-95"
-                    aria-label="Zoom Out"
+                    className="p-2 text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white transition"
                  >
                      <ZoomOut size={20} />
                  </button>
-                 
-                 {/* Reset zoom button - only show when zoomed */}
-                 {currentGestures.isZoomed && (
-                     <button 
-                        onClick={handleResetZoom}
-                        className="p-2 text-primary hover:text-primary/80 transition active:scale-95"
-                        aria-label="Reset Zoom"
-                     >
-                         <RotateCcw size={18} />
-                     </button>
-                 )}
-                 
                  <button 
                     onClick={handleZoomIn}
-                    className="p-2 text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white transition active:scale-95"
-                    aria-label="Zoom In"
+                    className="p-2 text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white transition"
                  >
                      <ZoomIn size={20} />
                  </button>
