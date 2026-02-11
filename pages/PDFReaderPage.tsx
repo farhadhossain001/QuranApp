@@ -81,11 +81,9 @@ const LazyPdfPage = ({
                 if (entry.isIntersecting) {
                     setIsVisible(true);
                     onVisible(pageNum);
-                } else {
-                    // Keep visible once loaded to prevent stutter, or implement virtual windowing for huge docs
                 }
             },
-            { rootMargin: '50% 0px', threshold: 0.01 } 
+            { rootMargin: '100% 0px', threshold: 0.01 } 
         );
 
         if (wrapperRef.current) {
@@ -106,8 +104,8 @@ const LazyPdfPage = ({
         <div 
             ref={wrapperRef} 
             id={`page-container-${pageNum}`}
-            className="flex justify-center my-4 min-h-[100px] relative transition-all duration-200"
-            style={{ minHeight: scale ? 200 * scale : 300 }} // Approximate placeholder height
+            className="flex justify-center my-4 relative"
+            style={{ minHeight: scale ? 200 * scale : 300 }}
         >
             <div className="relative shadow-lg bg-white">
                 <canvas ref={canvasRef} className="block bg-white" />
@@ -131,7 +129,7 @@ const PDFReaderPage = () => {
   const [rendering, setRendering] = useState(false);
   const [useFallbackViewer, setUseFallbackViewer] = useState(false);
   const [showManualFallback, setShowManualFallback] = useState(false);
-  const [viewMode, setViewMode] = useState<'single' | 'scroll'>('scroll');
+  const [viewMode, setViewMode] = useState<'single' | 'scroll'>('single'); // Default: Single Page
   
   // PDF State
   const [pdfDoc, setPdfDoc] = useState<any | null>(null);
@@ -140,7 +138,7 @@ const PDFReaderPage = () => {
   const [scale, setScale] = useState<number | null>(null); 
   const [pageInput, setPageInput] = useState("1");
   
-  // Interaction State (Single Mode)
+  // Interaction State
   const transformRef = useRef({ x: 0, y: 0, scale: 1 });
   const touchStateRef = useRef<{
       distance: number | null;
@@ -165,6 +163,7 @@ const PDFReaderPage = () => {
   const singleRenderTaskRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const scrollContentRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -190,9 +189,8 @@ const PDFReaderPage = () => {
               try {
                   const page = await pdfDoc.getPage(1);
                   const viewport = page.getViewport({ scale: 1 });
-                  // Use window innerWidth as reliable fallback for mobile initial render
                   const availableWidth = containerRef.current?.clientWidth || window.innerWidth;
-                  const targetWidth = Math.min(availableWidth - 32, 800); 
+                  const targetWidth = Math.min(availableWidth - 24, 800); 
                   const newScale = targetWidth / viewport.width;
                   setScale(newScale);
               } catch (e) {
@@ -275,12 +273,9 @@ const PDFReaderPage = () => {
       if (!pdfDoc || !singleCanvasRef.current) return;
       setRendering(true);
       try {
-        // In Single Mode, we render at a fixed high quality (or current scale)
-        // and allow CSS to handle the user zooming interaction to prevent flickering
-        // We render slightly larger for crispness if user zooms in a bit
         await renderPdfPage(pdfDoc, pageNum, scale, singleCanvasRef.current, singleRenderTaskRef);
         
-        // Reset transform on page change
+        // Reset CSS transform on page change for Single View
         transformRef.current = { x: 0, y: 0, scale: 1 };
         if (contentRef.current) {
             contentRef.current.style.transform = `translate3d(0px, 0px, 0) scale(1)`;
@@ -296,15 +291,13 @@ const PDFReaderPage = () => {
 
   // --- INTERACTION HANDLERS ---
 
-  // Helper to update CSS transform
-  const updateTransform = () => {
+  const updateSingleTransform = () => {
       if (contentRef.current) {
           const { x, y, scale } = transformRef.current;
           contentRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
       }
   };
 
-  // Helper distance
   const getDistance = (touches: React.TouchList) => {
       return Math.hypot(
           touches[0].clientX - touches[1].clientX,
@@ -314,13 +307,13 @@ const PDFReaderPage = () => {
 
   const handleTouchStart = (e: React.TouchEvent) => {
       if (viewMode === 'scroll') {
-          // Scroll Mode Logic
+          // Scroll Mode
           if (e.touches.length === 2) {
               touchStateRef.current.distance = getDistance(e.touches);
               touchStateRef.current.startScale = scale || 1;
           }
       } else {
-          // Single Mode Logic
+          // Single Mode
           if (e.touches.length === 1) {
               touchStateRef.current.isPanning = true;
               touchStateRef.current.startX = e.touches[0].clientX;
@@ -337,78 +330,69 @@ const PDFReaderPage = () => {
 
   const handleTouchMove = (e: React.TouchEvent) => {
       if (viewMode === 'scroll') {
-          // Scroll Mode: Pinch adjusts global scale
+          // Scroll Mode: Only handle Pinch Zoom
           if (e.touches.length === 2 && touchStateRef.current.distance) {
-              e.preventDefault(); // Prevent browser zoom
+              e.preventDefault(); // Stop browser zoom
               const dist = getDistance(e.touches);
               const ratio = dist / touchStateRef.current.distance;
-              const newScale = Math.max(0.5, Math.min(touchStateRef.current.startScale * ratio, 3.0));
-              setScale(newScale);
+              
+              // Apply CSS scaling to the content wrapper for smoothness
+              if (scrollContentRef.current) {
+                  scrollContentRef.current.style.transformOrigin = 'center top';
+                  scrollContentRef.current.style.transform = `scale(${ratio})`;
+              }
           }
+          // Single finger touch is left alone for native scrolling (handled by overflow-auto)
       } else {
           // Single Mode: Pan & CSS Zoom
           e.preventDefault(); 
           if (e.touches.length === 1 && touchStateRef.current.isPanning) {
-              // Pan
               const dx = e.touches[0].clientX - touchStateRef.current.startX;
               const dy = e.touches[0].clientY - touchStateRef.current.startY;
-              
-              // Only allow panning if zoomed in or scale > 1
-              // But for UX feel, we allow slight elasticity
               transformRef.current.x = touchStateRef.current.lastX + dx;
               transformRef.current.y = touchStateRef.current.lastY + dy;
-              updateTransform();
+              updateSingleTransform();
 
           } else if (e.touches.length === 2 && touchStateRef.current.distance) {
-              // Pinch
               const dist = getDistance(e.touches);
               const ratio = dist / touchStateRef.current.distance;
               const newScale = Math.max(1, Math.min(touchStateRef.current.startScale * ratio, 4.0));
-              
               transformRef.current.scale = newScale;
-              updateTransform();
+              updateSingleTransform();
           }
       }
   };
 
   const handleTouchEnd = () => {
-      if (viewMode === 'single') {
-          // Snap back logic for Single Mode
+      if (viewMode === 'scroll') {
+          if (touchStateRef.current.distance && scrollContentRef.current) {
+                // End of Pinch: Calculate new scale and re-render
+                const currentTransform = scrollContentRef.current.style.transform;
+                const match = currentTransform.match(/scale\((.*?)\)/);
+                const ratio = match ? parseFloat(match[1]) : 1;
+
+                scrollContentRef.current.style.transform = 'none';
+                
+                const currentScale = scale || 1;
+                // Limit scale 
+                const newScale = Math.max(0.5, Math.min(currentScale * ratio, 3.0));
+                setScale(newScale);
+          }
+      } else {
+          // Single Mode Snap Back
           const { scale, x, y } = transformRef.current;
-          
           let newScale = scale;
           let newX = x;
           let newY = y;
 
-          // 1. Min Scale Constraint
-          if (scale < 1) {
-              newScale = 1;
-              newX = 0;
-              newY = 0;
-          }
-
-          // 2. Bounds Constraint (simple centering if smaller than viewport, or clamping if larger)
-          if (newScale === 1) {
-              newX = 0;
-              newY = 0;
-          } else {
-              // Simple bound logic: ensure user can't pan page completely off screen
-              // For robustness, usually requires comparing content width vs container width
-              // Here we just prevent extreme fly-away
-              const limitX = 200 * newScale; // Loose limit
-              const limitY = 300 * newScale;
-              if (newX > limitX) newX = limitX;
-              if (newX < -limitX) newX = -limitX;
-              if (newY > limitY) newY = limitY;
-              if (newY < -limitY) newY = -limitY;
-          }
-
-          // Animate back if needed
+          if (scale < 1) { newScale = 1; newX = 0; newY = 0; }
+          if (newScale === 1) { newX = 0; newY = 0; }
+          
           if (newScale !== scale || newX !== x || newY !== y) {
               if (contentRef.current) {
                   contentRef.current.style.transition = 'transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)';
                   transformRef.current = { x: newX, y: newY, scale: newScale };
-                  updateTransform();
+                  updateSingleTransform();
                   setTimeout(() => {
                       if (contentRef.current) contentRef.current.style.transition = 'none';
                   }, 300);
@@ -416,7 +400,6 @@ const PDFReaderPage = () => {
           }
       }
       
-      // Reset interaction state
       touchStateRef.current.distance = null;
       touchStateRef.current.isPanning = false;
   };
@@ -428,25 +411,21 @@ const PDFReaderPage = () => {
               if (contentRef.current) {
                   contentRef.current.style.transition = 'transform 0.3s ease';
                   transformRef.current = { x: 0, y: 0, scale: 1 };
-                  updateTransform();
-                  setTimeout(() => {
-                      if(contentRef.current) contentRef.current.style.transition = 'none';
-                  }, 300);
+                  updateSingleTransform();
+                  setTimeout(() => { if(contentRef.current) contentRef.current.style.transition = 'none'; }, 300);
               }
           } else {
               // Zoom In
               if (contentRef.current) {
                   contentRef.current.style.transition = 'transform 0.3s ease';
                   transformRef.current = { x: 0, y: 0, scale: 2 };
-                  updateTransform();
-                  setTimeout(() => {
-                      if(contentRef.current) contentRef.current.style.transition = 'none';
-                  }, 300);
+                  updateSingleTransform();
+                  setTimeout(() => { if(contentRef.current) contentRef.current.style.transition = 'none'; }, 300);
               }
           }
       } else {
-          // Scroll Mode: Reset global scale
-          setScale(s => (s && s > 1.5) ? 1 : 1.5);
+          // Scroll Mode: Reset global scale to 1.5 or Auto-Fit (approx 0.6-0.8 on mobile)
+          setScale(s => (s && s > 1.2) ? 0.8 : 1.5); 
       }
   };
 
@@ -482,7 +461,7 @@ const PDFReaderPage = () => {
           transformRef.current.scale = Math.min(transformRef.current.scale + 0.5, 4);
           if (contentRef.current) {
               contentRef.current.style.transition = 'transform 0.2s ease';
-              updateTransform();
+              updateSingleTransform();
               setTimeout(() => { if(contentRef.current) contentRef.current.style.transition = 'none'; }, 200);
           }
       } else {
@@ -493,14 +472,10 @@ const PDFReaderPage = () => {
   const handleZoomOut = () => {
       if (viewMode === 'single') {
           transformRef.current.scale = Math.max(transformRef.current.scale - 0.5, 1);
-          // Recenter if back to 1
-          if (transformRef.current.scale === 1) {
-              transformRef.current.x = 0;
-              transformRef.current.y = 0;
-          }
+          if (transformRef.current.scale === 1) { transformRef.current.x = 0; transformRef.current.y = 0; }
           if (contentRef.current) {
               contentRef.current.style.transition = 'transform 0.2s ease';
-              updateTransform();
+              updateSingleTransform();
               setTimeout(() => { if(contentRef.current) contentRef.current.style.transition = 'none'; }, 200);
           }
       } else {
@@ -511,14 +486,7 @@ const PDFReaderPage = () => {
   const toggleViewMode = () => {
       const newMode = viewMode === 'single' ? 'scroll' : 'single';
       setViewMode(newMode);
-      // Reset scale when switching to avoid huge/tiny pages in new mode
-      if (newMode === 'scroll') {
-          // Recalculate auto-fit for scroll
-          setScale(null);
-      } else {
-          // Recalculate auto-fit for single
-          setScale(null);
-      }
+      setScale(null); // Reset scale to trigger auto-fit logic for new mode
       setTimeout(() => {
           if (newMode === 'scroll') {
               scrollToPage(pageNum);
@@ -629,7 +597,7 @@ const PDFReaderPage = () => {
       ) : (
           // --- Scroll View ---
           <div 
-            className="flex-1 overflow-y-auto relative pt-20 pb-24 px-4 bg-gray-100 dark:bg-gray-900 touch-pan-y"
+            className="flex-1 overflow-auto relative pt-20 pb-24 px-4 bg-gray-100 dark:bg-gray-900"
             ref={scrollContainerRef}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
@@ -642,7 +610,10 @@ const PDFReaderPage = () => {
                      <p className="text-sm text-gray-500">Preparing Scroll View...</p>
                  </div>
              ) : (
-                 <div className="max-w-4xl mx-auto origin-top">
+                 <div 
+                    ref={scrollContentRef}
+                    className="max-w-4xl mx-auto origin-top transition-transform duration-75"
+                 >
                      {/* Render List of Pages */}
                      {Array.from({ length: numPages }, (_, i) => (
                          <LazyPdfPage 
