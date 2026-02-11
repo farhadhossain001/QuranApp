@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useAppStore } from '../context/Store';
 import { getQiblaDirection } from '../services/api';
@@ -91,8 +90,8 @@ const CheckIcon = ({ className = "" }: { className?: string }) => (
     </svg>
 );
 
-const RotateIcon = ({ className = "" }: { className?: string }) => (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+const RotateIcon = ({ className = "", style }: { className?: string; style?: React.CSSProperties }) => (
+    <svg className={className} style={style} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 2v6h-6" />
         <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
         <path d="M3 22v-6h6" />
@@ -217,6 +216,33 @@ const QiblaPage = () => {
         targetHeadingRef.current = filteredHeading;
     }, [applyMedianFilter]);
 
+    const startCompass = useCallback(() => {
+        if (typeof DeviceOrientationEvent !== 'undefined' &&
+            typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+            (DeviceOrientationEvent as any).requestPermission()
+                .then((response: string) => {
+                    if (response === 'granted') {
+                        setPermissionGranted(true);
+                        setCompassError(null);
+                        window.addEventListener('deviceorientation', handleOrientation, true);
+                    } else {
+                        setCompassError(t('permissionDenied'));
+                    }
+                })
+                .catch((err: Error) => {
+                    console.error(err);
+                    setCompassError(t('permissionFailed'));
+                });
+        } else {
+            setPermissionGranted(true);
+            if ('ondeviceorientationabsolute' in (window as any)) {
+                window.addEventListener('deviceorientationabsolute' as any, handleOrientation, true);
+            } else {
+                window.addEventListener('deviceorientation', handleOrientation, true);
+            }
+        }
+    }, [handleOrientation, t]);
+
     // Initialize compass and fetch Qibla direction
     useEffect(() => {
         setHeaderTitle(t('qibla'));
@@ -240,10 +266,10 @@ const QiblaPage = () => {
         }
 
         return () => {
-            window.removeEventListener('deviceorientationabsolute' as any, handleOrientation);
-            window.removeEventListener('deviceorientation', handleOrientation);
+            window.removeEventListener('deviceorientationabsolute' as any, handleOrientation, true);
+            window.removeEventListener('deviceorientation', handleOrientation, true);
         };
-    }, [t, setHeaderTitle, settings.location, handleOrientation]);
+    }, [t, setHeaderTitle, settings.location, handleOrientation, startCompass]);
 
     // Check alignment
     useEffect(() => {
@@ -259,33 +285,6 @@ const QiblaPage = () => {
             setIsAligned(aligned);
         }
     }, [smoothedHeading, qiblaDirection, isAligned, getShortestRotation]);
-
-    const startCompass = useCallback(() => {
-        if (typeof DeviceOrientationEvent !== 'undefined' &&
-            typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-            (DeviceOrientationEvent as any).requestPermission()
-                .then((response: string) => {
-                    if (response === 'granted') {
-                        setPermissionGranted(true);
-                        setCompassError(null);
-                        window.addEventListener('deviceorientation', handleOrientation, true);
-                    } else {
-                        setCompassError(t('permissionDenied'));
-                    }
-                })
-                .catch((err: Error) => {
-                    console.error(err);
-                    setCompassError(t('permissionFailed'));
-                });
-        } else {
-            setPermissionGranted(true);
-            if ('ondeviceorientationabsolute' in window) {
-                window.addEventListener('deviceorientationabsolute' as any, handleOrientation, true);
-            } else {
-                window.addEventListener('deviceorientation', handleOrientation, true);
-            }
-        }
-    }, [handleOrientation, t]);
 
     const compassRotation = -smoothedHeading;
 
