@@ -1,5 +1,5 @@
 {
-  "name": "copy-of-qur'an-calender",
+  "name": "copy-of-qur'an-icon-test",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -13,7 +13,8 @@
     "lucide-react": "^0.563.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "@google/genai": "^1.40.0"
+    "@google/genai": "^1.40.0",
+    "pdfjs-dist": "3.11.174"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

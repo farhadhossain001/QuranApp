@@ -149,6 +149,18 @@ export const translations: Record<string, Record<string, string>> = {
     currentLocation: 'Current Location',
     permissionDenied: 'Permission denied',
     permissionFailed: 'Failed to request permission',
+    // Namaz Shikkha
+    namazShikkha: 'Namaz Shikkha',
+    namazShikkhaDesc: 'Learn how to pray correctly',
+    author: 'Author',
+    readBook: 'Read Book',
+    page: 'Page',
+    zoomIn: 'Zoom In',
+    zoomOut: 'Zoom Out',
+    nextPage: 'Next',
+    prevPage: 'Prev',
+    searchBook: 'Search Books...',
+    pdfError: 'Error loading PDF. Please check your connection.',
   },
   bn: {
     home: 'হোম',
@@ -299,5 +311,17 @@ export const translations: Record<string, Record<string, string>> = {
     currentLocation: 'বর্তমান অবস্থান',
     permissionDenied: 'অনুমতি প্রত্যাখ্যান করা হয়েছে',
     permissionFailed: 'অনুমতি অনুরোধ ব্যর্থ হয়েছে',
+    // Namaz Shikkha
+    namazShikkha: 'নামাজ শিক্ষা',
+    namazShikkhaDesc: 'সহীহ্ নামাজ শিক্ষা বই',
+    author: 'লেখক',
+    readBook: 'বইটি পড়ুন',
+    page: 'পৃষ্ঠা',
+    zoomIn: 'জুম ইন',
+    zoomOut: 'জুম আউট',
+    nextPage: 'পরবর্তী',
+    prevPage: 'পূর্ববর্তী',
+    searchBook: 'বই অনুসন্ধান করুন...',
+    pdfError: 'পিডিএফ লোড করতে সমস্যা হয়েছে। সংযোগ পরীক্ষা করুন।',
   }
 };
