@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useAppStore } from '../context/Store';
 import { NamazIcon } from '../components/CustomIcons';
 import { namazBooks, NamazBook } from '../utils/namazBooks';
-import { Search, BookOpen } from 'lucide-react';
+import { Search, BookOpen, User } from 'lucide-react';
 
 const NamazShikkhaPage = () => {
   const { t, setHeaderTitle, settings } = useAppStore();
@@ -46,23 +46,23 @@ const NamazShikkhaPage = () => {
         />
       </div>
 
-      {/* Books Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Books Grid - Vertical Cards Layout */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         {filteredBooks.map((book) => (
           <Link 
             key={book.id} 
             to={`/read-book/${book.id}`}
-            className="flex flex-col bg-white dark:bg-surface-dark rounded-xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-lg transition-all duration-300 group h-full"
+            className="group flex flex-col gap-3"
           >
-            {/* Cover Image Section */}
-            <div className={`relative h-48 w-full overflow-hidden ${book.color || 'bg-gray-100'} flex items-center justify-center`}>
+            {/* Cover Image Section - Vertical Aspect Ratio (2:3) */}
+            <div className={`relative aspect-[2/3] w-full overflow-hidden rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 ${book.color || 'bg-gray-100'}`}>
                 {book.coverImage ? (
                     <>
-                        <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors z-10" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors z-10" />
                         <img 
                             src={book.coverImage} 
                             alt={book.title_en}
-                            className="h-full w-full object-cover transform group-hover:scale-105 transition-transform duration-500"
+                            className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500"
                             loading="lazy"
                             onError={(e) => {
                                 (e.target as HTMLImageElement).style.display = 'none';
@@ -70,39 +70,31 @@ const NamazShikkhaPage = () => {
                             }}
                         />
                         {/* Fallback if image fails or loading */}
-                        <div className="hidden absolute inset-0 flex items-center justify-center">
-                            <BookOpen className="text-white/40" size={60} />
+                        <div className="hidden absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                            <BookOpen className="text-gray-400 mb-2" size={32} />
+                            <span className="text-xs text-gray-500 font-medium line-clamp-2">
+                                {settings.appLanguage === 'bn' ? book.title_bn : book.title_en}
+                            </span>
                         </div>
                     </>
                 ) : (
-                    <BookOpen className="text-white/40" size={60} />
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-4 text-center">
+                        <BookOpen className="text-white/40" size={40} />
+                         <span className="text-xs text-white/80 font-medium mt-2 line-clamp-2 relative z-20">
+                            {settings.appLanguage === 'bn' ? book.title_bn : book.title_en}
+                        </span>
+                    </div>
                 )}
-                
-                {/* Overlay Title for better visibility if image is busy */}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 pt-10 z-20">
-                     <h3 className="text-white font-bold text-lg leading-tight line-clamp-1">
-                        {settings.appLanguage === 'bn' ? book.title_bn : book.title_en}
-                    </h3>
-                </div>
             </div>
 
-            {/* Content Section */}
-            <div className="p-4 flex flex-col flex-1">
-                <div className="mb-auto">
-                    <p className="text-xs text-primary font-semibold uppercase tracking-wide mb-1 flex items-center gap-1">
-                       <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block"></span>
-                       {book.author}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2 leading-relaxed">
-                        {book.description}
-                    </p>
-                </div>
-                
-                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-                    <div className="w-full bg-gray-50 dark:bg-gray-800 group-hover:bg-primary group-hover:text-white text-gray-700 dark:text-gray-300 py-2.5 rounded-lg font-medium text-center text-sm transition-colors flex items-center justify-center gap-2">
-                        <BookOpen size={16} />
-                        {t('readBook')}
-                    </div>
+            {/* Content Section - Title & Author Only */}
+            <div className="flex flex-col px-1">
+                <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm sm:text-base leading-tight line-clamp-2 group-hover:text-primary transition-colors mb-1">
+                    {settings.appLanguage === 'bn' ? book.title_bn : book.title_en}
+                </h3>
+                <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                   <User size={12} />
+                   <span className="truncate">{book.author}</span>
                 </div>
             </div>
           </Link>
