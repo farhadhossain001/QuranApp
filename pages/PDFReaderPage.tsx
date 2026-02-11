@@ -4,9 +4,37 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { useAppStore } from '../context/Store';
 import { namazBooks } from '../utils/namazBooks';
 import { 
-  ChevronLeft, ChevronRight, ZoomIn, ZoomOut, ArrowLeft, 
-  Loader2, AlertCircle, FileText, ScrollText, RectangleHorizontal, RotateCcw 
+  ChevronLeft, 
+  ChevronRight, 
+  ZoomIn, 
+  ZoomOut, 
+  ArrowLeft, 
+  Loader2, 
+  AlertCircle, 
+  FileText, 
+  ScrollText, 
+  RectangleHorizontal,
+  RotateCcw 
 } from 'lucide-react';
+
+// --- Touch State Interface ---
+interface TouchState {
+  initialDistance: number;
+  initialScale: number;
+  initialTranslate: { x: number; y: number };
+  centerPoint: { x: number; y: number };
+  isPinching: boolean;
+  isPanning: boolean;
+  lastTouchPos: { x: number; y: number };
+  startTime: number;
+}
+
+// --- Transform State Interface ---
+interface TransformState {
+  scale: number;
+  translateX: number;
+  translateY: number;
+}
 
 // --- Helper: Render Page Function ---
 const renderPdfPage = async (
@@ -57,6 +85,280 @@ const renderPdfPage = async (
     }
 };
 
+// --- Helper: Calculate distance between two touch points ---
+const getTouchDistance = (touch1: React.Touch, touch2: React.Touch): number => {
+    return Math.hypot(
+        touch1.clientX - touch2.clientX,
+        touch1.clientY - touch2.clientY
+    );
+};
+
+// --- Helper: Get center point between two touches ---
+const getTouchCenter = (touch1: React.Touch, touch2: React.Touch): { x: number; y: number } => {
+    return {
+        x: (touch1.clientX + touch2.clientX) / 2,
+        y: (touch1.clientY + touch2.clientY) / 2
+    };
+};
+
+// --- Sub-Component: Zoomable Container ---
+const ZoomableContainer = ({ 
+    children, 
+    transform, 
+    onTransformChange,
+    containerRef,
+    contentRef,
+    minScale = 0.5,
+    maxScale = 4.0
+}: { 
+    children: React.ReactNode;
+    transform: TransformState;
+    onTransformChange: (transform: TransformState) => void;
+    containerRef: React.RefObject<HTMLDivElement>;
+    contentRef: React.RefObject<HTMLDivElement>;
+    minScale?: number;
+    maxScale?: number;
+}) => {
+    const touchStateRef = useRef<TouchState | null>(null);
+    const animationFrameRef = useRef<number | null>(null);
+    const velocityRef = useRef({ x: 0, y: 0 });
+    const lastMoveTimeRef = useRef(0);
+
+    const clampTranslation = useCallback((
+        translateX: number, 
+        translateY: number, 
+        scale: number
+    ): { x: number; y: number } => {
+        if (!containerRef.current || !contentRef.current) {
+            return { x: translateX, y: translateY };
+        }
+
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const contentRect = contentRef.current.getBoundingClientRect();
+
+        const scaledWidth = contentRect.width;
+        const scaledHeight = contentRect.height;
+
+        let clampedX = translateX;
+        let clampedY = translateY;
+
+        // If content is smaller than container, center it
+        if (scaledWidth <= containerRect.width) {
+            clampedX = 0;
+        } else {
+            const maxX = (scaledWidth - containerRect.width) / 2 + 20;
+            clampedX = Math.max(-maxX, Math.min(maxX, translateX));
+        }
+
+        if (scaledHeight <= containerRect.height) {
+            clampedY = 0;
+        } else {
+            const maxY = (scaledHeight - containerRect.height) / 2 + 20;
+            clampedY = Math.max(-maxY, Math.min(maxY, translateY));
+        }
+
+        return { x: clampedX, y: clampedY };
+    }, [containerRef, contentRef]);
+
+    const handleTouchStart = useCallback((e: React.TouchEvent) => {
+        // Cancel any ongoing momentum
+        if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+            animationFrameRef.current = null;
+        }
+        velocityRef.current = { x: 0, y: 0 };
+
+        if (e.touches.length === 2) {
+            // Pinch gesture start
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            const distance = getTouchDistance(touch1, touch2);
+            const center = getTouchCenter(touch1, touch2);
+
+            touchStateRef.current = {
+                initialDistance: distance,
+                initialScale: transform.scale,
+                initialTranslate: { x: transform.translateX, y: transform.translateY },
+                centerPoint: center,
+                isPinching: true,
+                isPanning: false,
+                lastTouchPos: center,
+                startTime: Date.now()
+            };
+        } else if (e.touches.length === 1 && transform.scale > 1) {
+            // Pan gesture start (only when zoomed in)
+            const touch = e.touches[0];
+            touchStateRef.current = {
+                initialDistance: 0,
+                initialScale: transform.scale,
+                initialTranslate: { x: transform.translateX, y: transform.translateY },
+                centerPoint: { x: touch.clientX, y: touch.clientY },
+                isPinching: false,
+                isPanning: true,
+                lastTouchPos: { x: touch.clientX, y: touch.clientY },
+                startTime: Date.now()
+            };
+        }
+    }, [transform]);
+
+    const handleTouchMove = useCallback((e: React.TouchEvent) => {
+        if (!touchStateRef.current) return;
+
+        const now = Date.now();
+        const deltaTime = now - lastMoveTimeRef.current;
+        lastMoveTimeRef.current = now;
+
+        if (e.touches.length === 2 && touchStateRef.current.isPinching) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            const distance = getTouchDistance(touch1, touch2);
+            const center = getTouchCenter(touch1, touch2);
+
+            // Calculate new scale
+            const scaleRatio = distance / touchStateRef.current.initialDistance;
+            let newScale = touchStateRef.current.initialScale * scaleRatio;
+            newScale = Math.max(minScale, Math.min(maxScale, newScale));
+
+            // Calculate translation to zoom towards pinch center
+            const containerRect = containerRef.current?.getBoundingClientRect();
+            if (containerRect) {
+                const containerCenterX = containerRect.width / 2;
+                const containerCenterY = containerRect.height / 2;
+
+                const pinchOffsetX = center.x - containerRect.left - containerCenterX;
+                const pinchOffsetY = center.y - containerRect.top - containerCenterY;
+
+                const scaleDiff = newScale / touchStateRef.current.initialScale;
+                
+                let newTranslateX = touchStateRef.current.initialTranslate.x * scaleDiff + 
+                    (center.x - touchStateRef.current.centerPoint.x);
+                let newTranslateY = touchStateRef.current.initialTranslate.y * scaleDiff + 
+                    (center.y - touchStateRef.current.centerPoint.y);
+
+                const clamped = clampTranslation(newTranslateX, newTranslateY, newScale);
+
+                onTransformChange({
+                    scale: newScale,
+                    translateX: clamped.x,
+                    translateY: clamped.y
+                });
+            }
+
+            touchStateRef.current.lastTouchPos = center;
+
+        } else if (e.touches.length === 1 && touchStateRef.current.isPanning) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - touchStateRef.current.lastTouchPos.x;
+            const deltaY = touch.clientY - touchStateRef.current.lastTouchPos.y;
+
+            // Calculate velocity for momentum
+            if (deltaTime > 0) {
+                velocityRef.current = {
+                    x: deltaX / deltaTime * 15,
+                    y: deltaY / deltaTime * 15
+                };
+            }
+
+            let newTranslateX = transform.translateX + deltaX;
+            let newTranslateY = transform.translateY + deltaY;
+
+            const clamped = clampTranslation(newTranslateX, newTranslateY, transform.scale);
+
+            onTransformChange({
+                ...transform,
+                translateX: clamped.x,
+                translateY: clamped.y
+            });
+
+            touchStateRef.current.lastTouchPos = { x: touch.clientX, y: touch.clientY };
+        }
+    }, [transform, onTransformChange, clampTranslation, minScale, maxScale, containerRef]);
+
+    const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+        if (!touchStateRef.current) return;
+
+        // Apply momentum for panning
+        if (touchStateRef.current.isPanning && (Math.abs(velocityRef.current.x) > 0.5 || Math.abs(velocityRef.current.y) > 0.5)) {
+            const applyMomentum = () => {
+                velocityRef.current.x *= 0.95;
+                velocityRef.current.y *= 0.95;
+
+                if (Math.abs(velocityRef.current.x) < 0.5 && Math.abs(velocityRef.current.y) < 0.5) {
+                    animationFrameRef.current = null;
+                    return;
+                }
+
+                onTransformChange(prev => {
+                    const clamped = clampTranslation(
+                        prev.translateX + velocityRef.current.x,
+                        prev.translateY + velocityRef.current.y,
+                        prev.scale
+                    );
+                    return {
+                        ...prev,
+                        translateX: clamped.x,
+                        translateY: clamped.y
+                    };
+                });
+
+                animationFrameRef.current = requestAnimationFrame(applyMomentum);
+            };
+
+            animationFrameRef.current = requestAnimationFrame(applyMomentum);
+        }
+
+        // Reset to 1x scale if pinched below threshold
+        if (touchStateRef.current.isPinching && transform.scale < 1) {
+            onTransformChange({
+                scale: 1,
+                translateX: 0,
+                translateY: 0
+            });
+        }
+
+        // Handle transition from 2 fingers to 1 finger
+        if (e.touches.length === 1 && touchStateRef.current.isPinching) {
+            const touch = e.touches[0];
+            touchStateRef.current = {
+                ...touchStateRef.current,
+                isPinching: false,
+                isPanning: true,
+                lastTouchPos: { x: touch.clientX, y: touch.clientY }
+            };
+            return;
+        }
+
+        touchStateRef.current = null;
+    }, [transform, onTransformChange, clampTranslation]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (animationFrameRef.current) {
+                cancelAnimationFrame(animationFrameRef.current);
+            }
+        };
+    }, []);
+
+    return (
+        <div
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            className="w-full h-full"
+            style={{ touchAction: transform.scale > 1 ? 'none' : 'pan-y' }}
+        >
+            {children}
+        </div>
+    );
+};
+
 // --- Sub-Component: Lazy Page for Scroll Mode ---
 const LazyPdfPage = ({ 
     pdfDoc, 
@@ -82,7 +384,7 @@ const LazyPdfPage = ({
                     onVisible(pageNum);
                 }
             },
-            { rootMargin: '50% 0px', threshold: 0.1 }
+            { rootMargin: '100% 0px', threshold: 0.01 }
         );
 
         if (wrapperRef.current) {
@@ -116,24 +418,6 @@ const LazyPdfPage = ({
     );
 };
 
-// --- Touch Gesture Types ---
-interface GestureState {
-    initialDistance: number;
-    initialScale: number;
-    initialTranslate: { x: number; y: number };
-    pinchCenter: { x: number; y: number };
-    startTouch: { x: number; y: number };
-    lastTap: number;
-    isPinching: boolean;
-    isDragging: boolean;
-}
-
-interface TransformState {
-    scale: number;
-    translateX: number;
-    translateY: number;
-}
-
 const PDFReaderPage = () => {
   const { bookId } = useParams<{ bookId: string }>();
   const navigate = useNavigate();
@@ -150,43 +434,37 @@ const PDFReaderPage = () => {
   const [pdfDoc, setPdfDoc] = useState<any | null>(null);
   const [pageNum, setPageNum] = useState(1);
   const [numPages, setNumPages] = useState(0);
-  const [baseScale, setBaseScale] = useState<number>(1);
+  const [baseScale, setBaseScale] = useState<number | null>(null); 
   const [pageInput, setPageInput] = useState("1");
   
-  // Transform state for smooth zoom/pan
+  // Transform state for zoom and pan
   const [transform, setTransform] = useState<TransformState>({
     scale: 1,
     translateX: 0,
-    translateY: 0,
+    translateY: 0
   });
-  
-  // Visual transform during gesture (for smooth feedback)
-  const [visualTransform, setVisualTransform] = useState<TransformState | null>(null);
+
+  // Scroll mode transform
+  const [scrollTransform, setScrollTransform] = useState<TransformState>({
+    scale: 1,
+    translateX: 0,
+    translateY: 0
+  });
   
   // Refs
   const singleCanvasRef = useRef<HTMLCanvasElement>(null);
   const singleRenderTaskRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const scrollContentRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  
-  // Gesture ref
-  const gestureRef = useRef<GestureState>({
-    initialDistance: 0,
-    initialScale: 1,
-    initialTranslate: { x: 0, y: 0 },
-    pinchCenter: { x: 0, y: 0 },
-    startTouch: { x: 0, y: 0 },
-    lastTap: 0,
-    isPinching: false,
-    isDragging: false,
-  });
 
   const book = namazBooks.find(b => b.id === bookId);
 
-  // Computed effective scale
-  const effectiveScale = baseScale * transform.scale;
+  // Effective scale calculation
+  const effectiveScale = (baseScale || 1) * transform.scale;
+  const scrollEffectiveScale = (baseScale || 1) * scrollTransform.scale;
 
   // Initialize PDF worker
   useEffect(() => {
@@ -217,7 +495,7 @@ const PDFReaderPage = () => {
       }
   }, [loading, useFallbackViewer]);
 
-  // Fetch PDF
+  // Fetch Logic
   useEffect(() => {
     if (!book) return;
 
@@ -225,6 +503,8 @@ const PDFReaderPage = () => {
     setUseFallbackViewer(false);
     setPdfDoc(null);
     setShowManualFallback(false);
+    setTransform({ scale: 1, translateX: 0, translateY: 0 });
+    setScrollTransform({ scale: 1, translateX: 0, translateY: 0 });
 
     let active = true;
     const controller = new AbortController();
@@ -238,6 +518,7 @@ const PDFReaderPage = () => {
         if (!active) return;
         
         try {
+          console.log(`Attempting fetch via ${strategy.name}...`);
           const timeoutId = setTimeout(() => controller.abort(), 10000); 
           
           const response = await fetch(strategy.url, { 
@@ -267,15 +548,6 @@ const PDFReaderPage = () => {
                 const pdf = await loadingTask.promise;
                 setPdfDoc(pdf);
                 setNumPages(pdf.numPages);
-                
-                // Calculate initial base scale
-                const page = await pdf.getPage(1);
-                const viewport = page.getViewport({ scale: 1 });
-                const containerWidth = containerRef.current?.clientWidth || window.innerWidth;
-                const targetWidth = Math.min(containerWidth - 32, 800);
-                const calculatedScale = targetWidth / viewport.width;
-                setBaseScale(Math.max(0.5, Math.min(calculatedScale, 2.0)));
-                
                 setLoading(false);
                 return; 
             } catch (renderError) {
@@ -302,23 +574,31 @@ const PDFReaderPage = () => {
     };
   }, [book]);
 
-  // Reset transform when changing modes
-  useEffect(() => {
-    setTransform({ scale: 1, translateX: 0, translateY: 0 });
-    setVisualTransform(null);
-  }, [viewMode]);
-
   // --- Single View Rendering ---
   useEffect(() => {
     if (viewMode !== 'single') return;
 
     const renderSinglePage = async () => {
-      if (!pdfDoc || !singleCanvasRef.current) return;
+      if (!pdfDoc || !singleCanvasRef.current || !containerRef.current) return;
       
       setRendering(true);
 
       try {
-        await renderPdfPage(pdfDoc, pageNum, effectiveScale, singleCanvasRef.current, singleRenderTaskRef);
+        const page = await pdfDoc.getPage(pageNum);
+        
+        let currentBaseScale = baseScale;
+
+        if (currentBaseScale === null) {
+            const unscaledViewport = page.getViewport({ scale: 1 });
+            const containerWidth = containerRef.current.clientWidth;
+            const targetWidth = Math.min(containerWidth - 32, 800); 
+            const newScale = targetWidth / unscaledViewport.width;
+            currentBaseScale = Math.max(0.5, Math.min(newScale, 2.0));
+            setBaseScale(currentBaseScale);
+        }
+
+        await renderPdfPage(pdfDoc, pageNum, currentBaseScale, singleCanvasRef.current, singleRenderTaskRef);
+        
       } catch (err: any) {
           console.error("Render error", err);
       } finally {
@@ -327,9 +607,14 @@ const PDFReaderPage = () => {
     };
 
     renderSinglePage();
-  }, [pdfDoc, pageNum, effectiveScale, viewMode]);
+  }, [pdfDoc, pageNum, baseScale, viewMode]);
 
-  // --- Scroll Mode Page Visibility ---
+  // Reset transform when page changes
+  useEffect(() => {
+    setTransform({ scale: 1, translateX: 0, translateY: 0 });
+  }, [pageNum]);
+
+  // --- Scroll Mode Helpers ---
   const handleScrollPageVisible = useCallback((visiblePageNum: number) => {
       setPageNum(visiblePageNum);
   }, []);
@@ -345,218 +630,49 @@ const PDFReaderPage = () => {
       }
   };
 
-  // --- Get distance between two touch points ---
-  const getDistance = (touch1: React.Touch, touch2: React.Touch): number => {
-    return Math.hypot(
-      touch2.clientX - touch1.clientX,
-      touch2.clientY - touch1.clientY
-    );
-  };
-
-  // --- Get center point between two touches ---
-  const getCenter = (touch1: React.Touch, touch2: React.Touch) => ({
-    x: (touch1.clientX + touch2.clientX) / 2,
-    y: (touch1.clientY + touch2.clientY) / 2,
-  });
-
-  // --- Touch Handlers ---
-  const handleTouchStart = (e: React.TouchEvent) => {
-    const gesture = gestureRef.current;
-    const now = Date.now();
-
-    if (e.touches.length === 2) {
-      // Pinch start
-      gesture.isPinching = true;
-      gesture.isDragging = false;
-      
-      gesture.initialDistance = getDistance(e.touches[0], e.touches[1]);
-      gesture.initialScale = transform.scale;
-      gesture.initialTranslate = {
-        x: transform.translateX,
-        y: transform.translateY,
-      };
-      gesture.pinchCenter = getCenter(e.touches[0], e.touches[1]);
-      
-    } else if (e.touches.length === 1) {
-      // Check for double tap
-      if (now - gesture.lastTap < 300) {
-        handleDoubleTap(e.touches[0]);
-        gesture.lastTap = 0;
-        return;
-      }
-      gesture.lastTap = now;
-      
-      // Single touch - prepare for drag if zoomed
-      if (transform.scale > 1) {
-        gesture.isDragging = true;
-        gesture.startTouch = {
-          x: e.touches[0].clientX,
-          y: e.touches[0].clientY,
-        };
-        gesture.initialTranslate = {
-          x: transform.translateX,
-          y: transform.translateY,
-        };
-      }
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    const gesture = gestureRef.current;
-
-    if (gesture.isPinching && e.touches.length === 2) {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const currentDistance = getDistance(e.touches[0], e.touches[1]);
-      const currentCenter = getCenter(e.touches[0], e.touches[1]);
-      
-      // Calculate new scale
-      const scaleChange = currentDistance / gesture.initialDistance;
-      let newScale = gesture.initialScale * scaleChange;
-      newScale = Math.max(0.5, Math.min(newScale, 4));
-      
-      // Calculate translation to keep pinch center fixed
-      const deltaX = currentCenter.x - gesture.pinchCenter.x;
-      const deltaY = currentCenter.y - gesture.pinchCenter.y;
-      
-      // Scale factor for translation adjustment
-      const scaleFactor = newScale / gesture.initialScale;
-      
-      const newTranslateX = gesture.initialTranslate.x * scaleFactor + deltaX;
-      const newTranslateY = gesture.initialTranslate.y * scaleFactor + deltaY;
-      
-      // Use visual transform for smooth feedback
-      setVisualTransform({
-        scale: newScale,
-        translateX: newTranslateX,
-        translateY: newTranslateY,
-      });
-      
-    } else if (gesture.isDragging && e.touches.length === 1 && transform.scale > 1) {
-      e.preventDefault();
-      
-      const deltaX = e.touches[0].clientX - gesture.startTouch.x;
-      const deltaY = e.touches[0].clientY - gesture.startTouch.y;
-      
-      setVisualTransform({
-        scale: transform.scale,
-        translateX: gesture.initialTranslate.x + deltaX,
-        translateY: gesture.initialTranslate.y + deltaY,
-      });
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const gesture = gestureRef.current;
-
-    if (e.touches.length === 0) {
-      // All fingers lifted
-      if (visualTransform) {
-        // Apply the visual transform to actual state
-        let finalScale = visualTransform.scale;
-        let finalTranslateX = visualTransform.translateX;
-        let finalTranslateY = visualTransform.translateY;
-        
-        // Snap back if scale is too small
-        if (finalScale < 1) {
-          finalScale = 1;
-          finalTranslateX = 0;
-          finalTranslateY = 0;
-        }
-        
-        // Clamp translation to prevent going too far
-        const container = containerRef.current || scrollContainerRef.current;
-        if (container && finalScale > 1) {
-          const containerRect = container.getBoundingClientRect();
-          const maxTranslateX = (containerRect.width * (finalScale - 1)) / 2;
-          const maxTranslateY = (containerRect.height * (finalScale - 1)) / 2;
-          
-          finalTranslateX = Math.max(-maxTranslateX, Math.min(maxTranslateX, finalTranslateX));
-          finalTranslateY = Math.max(-maxTranslateY, Math.min(maxTranslateY, finalTranslateY));
-        }
-        
-        setTransform({
-          scale: finalScale,
-          translateX: finalTranslateX,
-          translateY: finalTranslateY,
-        });
-        setVisualTransform(null);
-      }
-      
-      gesture.isPinching = false;
-      gesture.isDragging = false;
-      
-    } else if (e.touches.length === 1 && gesture.isPinching) {
-      // Transitioned from pinch to single touch
-      if (visualTransform) {
-        setTransform(visualTransform);
-        setVisualTransform(null);
-      }
-      
-      gesture.isPinching = false;
-      
-      // Start dragging with remaining finger
-      if (transform.scale > 1 || (visualTransform && visualTransform.scale > 1)) {
-        gesture.isDragging = true;
-        gesture.startTouch = {
-          x: e.touches[0].clientX,
-          y: e.touches[0].clientY,
-        };
-        gesture.initialTranslate = visualTransform 
-          ? { x: visualTransform.translateX, y: visualTransform.translateY }
-          : { x: transform.translateX, y: transform.translateY };
-      }
-    }
-  };
-
-  // --- Double Tap Handler ---
-  const handleDoubleTap = (touch: React.Touch) => {
-    if (transform.scale > 1) {
-      // Reset zoom
-      setTransform({ scale: 1, translateX: 0, translateY: 0 });
-    } else {
-      // Zoom to 2x at tap point
-      const container = containerRef.current || scrollContainerRef.current;
-      if (container) {
-        const rect = container.getBoundingClientRect();
-        const tapX = touch.clientX - rect.left;
-        const tapY = touch.clientY - rect.top;
-        
-        // Calculate translation to center on tap point
-        const centerX = rect.width / 2;
-        const centerY = rect.height / 2;
-        
-        setTransform({
-          scale: 2,
-          translateX: (centerX - tapX),
-          translateY: (centerY - tapY) * 0.5,
-        });
-      }
-    }
-  };
-
   // --- Zoom Handlers ---
   const handleZoomIn = () => {
-    setTransform(prev => ({
-      ...prev,
-      scale: Math.min(4, prev.scale + 0.25),
-    }));
+    if (viewMode === 'single') {
+      setTransform(prev => ({
+        ...prev,
+        scale: Math.min(4.0, prev.scale + 0.25)
+      }));
+    } else {
+      setScrollTransform(prev => ({
+        ...prev,
+        scale: Math.min(4.0, prev.scale + 0.25)
+      }));
+    }
   };
 
   const handleZoomOut = () => {
-    setTransform(prev => {
-      const newScale = Math.max(0.5, prev.scale - 0.25);
-      return {
-        scale: newScale,
-        translateX: newScale <= 1 ? 0 : prev.translateX,
-        translateY: newScale <= 1 ? 0 : prev.translateY,
-      };
-    });
+    if (viewMode === 'single') {
+      setTransform(prev => {
+        const newScale = Math.max(0.5, prev.scale - 0.25);
+        return {
+          scale: newScale,
+          translateX: newScale <= 1 ? 0 : prev.translateX * (newScale / prev.scale),
+          translateY: newScale <= 1 ? 0 : prev.translateY * (newScale / prev.scale)
+        };
+      });
+    } else {
+      setScrollTransform(prev => {
+        const newScale = Math.max(0.5, prev.scale - 0.25);
+        return {
+          scale: newScale,
+          translateX: newScale <= 1 ? 0 : prev.translateX * (newScale / prev.scale),
+          translateY: newScale <= 1 ? 0 : prev.translateY * (newScale / prev.scale)
+        };
+      });
+    }
   };
 
   const handleResetZoom = () => {
-    setTransform({ scale: 1, translateX: 0, translateY: 0 });
+    if (viewMode === 'single') {
+      setTransform({ scale: 1, translateX: 0, translateY: 0 });
+    } else {
+      setScrollTransform({ scale: 1, translateX: 0, translateY: 0 });
+    }
   };
 
   const handlePageSubmit = (e: React.FormEvent) => {
@@ -579,6 +695,7 @@ const PDFReaderPage = () => {
       }
   };
 
+  // Nav Handlers
   const goNext = () => {
       const next = Math.min(numPages, pageNum + 1);
       scrollToPage(next);
@@ -589,9 +706,12 @@ const PDFReaderPage = () => {
       scrollToPage(prev);
   };
 
+  // Toggle Mode
   const toggleViewMode = () => {
       const newMode = viewMode === 'single' ? 'scroll' : 'single';
       setViewMode(newMode);
+      setTransform({ scale: 1, translateX: 0, translateY: 0 });
+      setScrollTransform({ scale: 1, translateX: 0, translateY: 0 });
       setTimeout(() => {
           if (newMode === 'scroll') {
               scrollToPage(pageNum);
@@ -599,16 +719,9 @@ const PDFReaderPage = () => {
       }, 100);
   };
 
-  // Current transform to apply (visual during gesture, actual otherwise)
-  const currentTransform = visualTransform || transform;
-  
-  // Transform style
-  const transformStyle: React.CSSProperties = {
-    transform: `translate(${currentTransform.translateX}px, ${currentTransform.translateY}px) scale(${currentTransform.scale})`,
-    transformOrigin: 'center top',
-    transition: visualTransform ? 'none' : 'transform 0.2s ease-out',
-    touchAction: transform.scale > 1 ? 'none' : 'pan-y',
-  };
+  // Current zoom percentage
+  const currentZoom = viewMode === 'single' ? transform.scale : scrollTransform.scale;
+  const isZoomed = currentZoom > 1;
 
   if (!book) return <div>Book not found</div>;
 
@@ -640,10 +753,11 @@ const PDFReaderPage = () => {
       );
   }
 
+  // Custom PDF Viewer UI
   return (
     <div className="fixed inset-0 z-50 bg-gray-100/90 dark:bg-gray-900/90 backdrop-blur-sm flex flex-col h-full">
       
-      {/* Header */}
+      {/* Floating Header */}
       <div className="absolute top-0 left-0 right-0 z-20 p-4 transition-transform duration-300">
           <div className="bg-white/80 dark:bg-surface-dark/80 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-sm rounded-full h-12 flex items-center justify-between px-2 pr-4 max-w-3xl mx-auto">
                 <button onClick={() => navigate(-1)} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition">
@@ -663,95 +777,114 @@ const PDFReaderPage = () => {
           </div>
       </div>
 
+      {/* Zoom Indicator */}
+      {isZoomed && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm">
+          {Math.round(currentZoom * 100)}% - Drag to pan
+        </div>
+      )}
+
       {/* Main Content Area */}
       {viewMode === 'single' ? (
-          // --- Single Page View ---
+          // --- Single Page View with Zoom ---
           <div 
             className="flex-1 overflow-hidden relative pt-20 pb-24"
             ref={containerRef}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            style={{ touchAction: transform.scale > 1 ? 'none' : 'pan-y' }}
           >
-            {loading && (
-                <div className="absolute inset-0 flex items-center justify-center z-10">
-                    <div className="flex flex-col items-center gap-4 bg-white/90 dark:bg-surface-dark/90 p-6 rounded-2xl shadow-xl backdrop-blur-sm">
-                        <Loader2 size={32} className="animate-spin text-primary" />
-                        <div className="text-center">
-                            <p className="text-sm font-semibold text-gray-900 dark:text-white">Downloading Book...</p>
-                            <p className="text-xs text-gray-500 mt-1">Please wait a moment</p>
-                        </div>
-                        {showManualFallback && (
-                            <button 
-                                onClick={() => { setUseFallbackViewer(true); setLoading(false); }}
-                                className="mt-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 transition flex items-center gap-2"
-                            >
-                                <FileText size={12} />
-                                Use Simple Viewer
-                            </button>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {/* Single Page with Transform */}
-            <div 
-                className="flex justify-center min-h-full items-start overflow-hidden"
-                style={{ height: '100%' }}
+            <ZoomableContainer
+              transform={transform}
+              onTransformChange={setTransform}
+              containerRef={containerRef}
+              contentRef={contentRef}
             >
-                <div 
-                    ref={contentRef}
-                    className={`relative transition-opacity duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}
-                    style={transformStyle}
-                >
-                    <div className="relative shadow-2xl rounded-sm overflow-hidden bg-white">
-                        <canvas ref={singleCanvasRef} className="block" />
-                        
-                        {rendering && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
-                                <Loader2 size={24} className="animate-spin text-primary" />
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
+              {loading && (
+                  <div className="absolute inset-0 flex items-center justify-center z-10">
+                      <div className="flex flex-col items-center gap-4 bg-white/90 dark:bg-surface-dark/90 p-6 rounded-2xl shadow-xl backdrop-blur-sm">
+                          <Loader2 size={32} className="animate-spin text-primary" />
+                          <div className="text-center">
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white">Downloading Book...</p>
+                              <p className="text-xs text-gray-500 mt-1">Please wait a moment</p>
+                          </div>
+                          {showManualFallback && (
+                              <button 
+                                  onClick={() => { setUseFallbackViewer(true); setLoading(false); }}
+                                  className="mt-2 px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-full text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 transition flex items-center gap-2"
+                              >
+                                  <FileText size={12} />
+                                  Use Simple Viewer
+                              </button>
+                          )}
+                      </div>
+                  </div>
+              )}
+
+              <div 
+                  ref={contentRef}
+                  className={`flex justify-center min-h-full items-center transition-opacity duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}
+                  style={{
+                    transform: `translate(${transform.translateX}px, ${transform.translateY}px) scale(${transform.scale})`,
+                    transformOrigin: 'center center',
+                    transition: 'transform 0.1s ease-out',
+                    willChange: 'transform'
+                  }}
+              >
+                  <div className="relative shadow-2xl rounded-sm overflow-hidden bg-white">
+                      <canvas ref={singleCanvasRef} className="block" />
+                      
+                      {rendering && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
+                              <Loader2 size={24} className="animate-spin text-primary" />
+                          </div>
+                      )}
+                  </div>
+              </div>
+            </ZoomableContainer>
           </div>
       ) : (
-          // --- Scroll View ---
+          // --- Scroll View with Zoom ---
           <div 
-            className="flex-1 overflow-auto relative pt-20 pb-24 px-4 bg-gray-100 dark:bg-gray-900"
+            className="flex-1 overflow-hidden relative pt-20 pb-24"
             ref={scrollContainerRef}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-            style={{ touchAction: transform.scale > 1 ? 'none' : 'pan-y pinch-zoom' }}
           >
-             {loading ? (
-                 <div className="flex flex-col items-center justify-center h-full gap-4">
-                     <Loader2 size={32} className="animate-spin text-primary" />
-                     <p className="text-sm text-gray-500">Preparing Scroll View...</p>
-                 </div>
-             ) : (
-                 <div 
-                    className="max-w-4xl mx-auto"
-                    style={transformStyle}
-                 >
-                     {Array.from({ length: numPages }, (_, i) => (
-                         <LazyPdfPage 
-                            key={i + 1} 
-                            pdfDoc={pdfDoc} 
-                            pageNum={i + 1} 
-                            scale={baseScale * transform.scale}
-                            onVisible={handleScrollPageVisible}
-                         />
-                     ))}
-                 </div>
-             )}
+            <ZoomableContainer
+              transform={scrollTransform}
+              onTransformChange={setScrollTransform}
+              containerRef={scrollContainerRef}
+              contentRef={scrollContentRef}
+            >
+              <div 
+                className="h-full overflow-y-auto px-4"
+                style={{
+                  transform: `translate(${scrollTransform.translateX}px, ${scrollTransform.translateY}px) scale(${scrollTransform.scale})`,
+                  transformOrigin: 'center top',
+                  transition: 'transform 0.1s ease-out',
+                  willChange: 'transform'
+                }}
+              >
+                {loading ? (
+                    <div className="flex flex-col items-center justify-center h-full gap-4">
+                        <Loader2 size={32} className="animate-spin text-primary" />
+                        <p className="text-sm text-gray-500">Preparing Scroll View...</p>
+                    </div>
+                ) : (
+                    <div ref={scrollContentRef} className="max-w-4xl mx-auto py-4">
+                        {Array.from({ length: numPages }, (_, i) => (
+                            <LazyPdfPage 
+                              key={i + 1} 
+                              pdfDoc={pdfDoc} 
+                              pageNum={i + 1} 
+                              scale={baseScale || 1}
+                              onVisible={handleScrollPageVisible}
+                            />
+                        ))}
+                    </div>
+                )}
+              </div>
+            </ZoomableContainer>
           </div>
       )}
 
-      {/* Bottom Controls */}
+      {/* Floating Bottom Controls */}
       <div className="absolute bottom-6 left-0 right-0 z-20 flex justify-center px-4 pointer-events-none">
          <div className="bg-white/90 dark:bg-surface-dark/90 backdrop-blur-md border border-gray-200/50 dark:border-gray-700/50 shadow-lg rounded-2xl p-2 flex items-center gap-3 pointer-events-auto">
              
@@ -797,42 +930,46 @@ const PDFReaderPage = () => {
              <div className="flex items-center gap-1">
                  <button 
                     onClick={handleZoomOut}
-                    className="p-2 text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white transition"
-                    disabled={transform.scale <= 0.5}
+                    disabled={currentZoom <= 0.5}
+                    className="p-2 text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white transition disabled:opacity-30"
                  >
                      <ZoomOut size={20} />
                  </button>
                  
-                 {/* Zoom Percentage / Reset */}
+                 {/* Zoom percentage / Reset button */}
                  <button
                     onClick={handleResetZoom}
-                    className="min-w-[3rem] text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-primary transition"
-                    title="Reset Zoom"
+                    className={`px-2 py-1 text-xs font-medium rounded-md transition min-w-[3rem] ${
+                      isZoomed 
+                        ? 'bg-primary/10 text-primary hover:bg-primary/20' 
+                        : 'text-gray-400 hover:text-gray-600'
+                    }`}
+                    title="Reset zoom"
                  >
-                    {Math.round(transform.scale * 100)}%
+                    {Math.round(currentZoom * 100)}%
                  </button>
                  
                  <button 
                     onClick={handleZoomIn}
-                    className="p-2 text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white transition"
-                    disabled={transform.scale >= 4}
+                    disabled={currentZoom >= 4.0}
+                    className="p-2 text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white transition disabled:opacity-30"
                  >
                      <ZoomIn size={20} />
                  </button>
              </div>
-             
-             {/* Reset Button (shows only when zoomed) */}
-             {transform.scale !== 1 && (
-               <>
-                 <div className="w-px h-8 bg-gray-200 dark:bg-gray-700"></div>
-                 <button 
-                    onClick={handleResetZoom}
-                    className="p-2 text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white transition"
-                    title="Reset View"
-                 >
-                     <RotateCcw size={18} />
-                 </button>
-               </>
+
+             {/* Reset Button when zoomed */}
+             {isZoomed && (
+                <>
+                  <div className="w-px h-8 bg-gray-200 dark:bg-gray-700"></div>
+                  <button 
+                      onClick={handleResetZoom}
+                      className="p-2 text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white transition"
+                      title="Reset view"
+                  >
+                      <RotateCcw size={18} />
+                  </button>
+                </>
              )}
          </div>
       </div>
