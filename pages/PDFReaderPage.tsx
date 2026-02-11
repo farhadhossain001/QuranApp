@@ -113,360 +113,348 @@ const LazyPdfPage = ({
     );
 };
 
-// --- Zoomable Container Component ---
-interface ZoomableContainerProps {
-    children: React.ReactNode;
-    containerRef: React.RefObject<HTMLDivElement>;
-    onZoomChange?: (scale: number) => void;
-    minScale?: number;
-    maxScale?: number;
+// --- Pinch Zoom Hook ---
+interface TouchState {
+    scale: number;
+    translateX: number;
+    translateY: number;
 }
 
-const ZoomableContainer: React.FC<ZoomableContainerProps> = ({
-    children,
-    containerRef,
-    onZoomChange,
-    minScale = 0.5,
-    maxScale = 4,
-}) => {
-    const contentRef = useRef<HTMLDivElement>(null);
-    
-    // Transform state
-    const [transform, setTransform] = useState({
-        scale: 1,
+const usePinchZoom = (
+    contentRef: React.RefObject<HTMLDivElement>,
+    containerRef: React.RefObject<HTMLDivElement>,
+    initialScale: number = 1,
+    minScale: number = 0.5,
+    maxScale: number = 4
+) => {
+    const [touchState, setTouchState] = useState<TouchState>({
+        scale: initialScale,
         translateX: 0,
         translateY: 0,
     });
-    
-    // Animation state
-    const [isAnimating, setIsAnimating] = useState(false);
-    
-    // Gesture tracking ref
-    const gestureRef = useRef<{
-        type: 'none' | 'pinch' | 'pan';
-        initialDistance: number;
-        initialScale: number;
-        initialTranslateX: number;
-        initialTranslateY: number;
-        pinchCenterX: number;
-        pinchCenterY: number;
-        startX: number;
-        startY: number;
-        lastScale: number;
-    }>({
-        type: 'none',
-        initialDistance: 0,
-        initialScale: 1,
-        initialTranslateX: 0,
-        initialTranslateY: 0,
-        pinchCenterX: 0,
-        pinchCenterY: 0,
+
+    const gestureRef = useRef({
+        isGesturing: false,
+        isPinching: false,
+        isPanning: false,
+        startDistance: 0,
+        startScale: 1,
         startX: 0,
         startY: 0,
-        lastScale: 1,
+        startTranslateX: 0,
+        startTranslateY: 0,
+        lastTouchX: 0,
+        lastTouchY: 0,
+        pinchCenterX: 0,
+        pinchCenterY: 0,
     });
 
-    // Double tap detection
-    const lastTapRef = useRef<{ time: number; x: number; y: number }>({ time: 0, x: 0, y: 0 });
+    const animationFrameRef = useRef<number | null>(null);
 
-    // Helper functions
-    const getDistance = (touch1: React.Touch, touch2: React.Touch) => {
+    const getDistance = (touches: React.TouchList) => {
         return Math.hypot(
-            touch2.clientX - touch1.clientX,
-            touch2.clientY - touch1.clientY
+            touches[0].clientX - touches[1].clientX,
+            touches[0].clientY - touches[1].clientY
         );
     };
 
-    const getCenter = (touch1: React.Touch, touch2: React.Touch) => {
+    const getCenter = (touches: React.TouchList) => {
         return {
-            x: (touch1.clientX + touch2.clientX) / 2,
-            y: (touch1.clientY + touch2.clientY) / 2,
+            x: (touches[0].clientX + touches[1].clientX) / 2,
+            y: (touches[0].clientY + touches[1].clientY) / 2,
         };
     };
 
-    // Constrain translation to keep content in view
-    const constrainTranslation = useCallback((
-        scale: number,
-        translateX: number,
-        translateY: number
-    ) => {
-        if (!containerRef.current || !contentRef.current) {
-            return { translateX, translateY };
+    const clampTranslate = useCallback((
+        translateX: number, 
+        translateY: number, 
+        scale: number
+    ): { x: number; y: number } => {
+        if (!contentRef.current || !containerRef.current) {
+            return { x: translateX, y: translateY };
         }
 
-        const containerRect = containerRef.current.getBoundingClientRect();
-        const contentRect = contentRef.current.getBoundingClientRect();
+        const content = contentRef.current;
+        const container = containerRef.current;
         
-        const scaledWidth = contentRect.width * scale;
-        const scaledHeight = contentRect.height * scale;
-        
-        const maxTranslateX = Math.max(0, (scaledWidth - containerRect.width) / 2);
-        const maxTranslateY = Math.max(0, (scaledHeight - containerRect.height) / 2);
+        const contentRect = content.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
 
-        return {
-            translateX: Math.max(-maxTranslateX, Math.min(maxTranslateX, translateX)),
-            translateY: Math.max(-maxTranslateY, Math.min(maxTranslateY, translateY)),
-        };
-    }, [containerRef]);
+        const scaledWidth = contentRect.width;
+        const scaledHeight = contentRect.height;
 
-    // Reset zoom
-    const resetZoom = useCallback(() => {
-        setIsAnimating(true);
-        setTransform({ scale: 1, translateX: 0, translateY: 0 });
-        setTimeout(() => setIsAnimating(false), 300);
-        onZoomChange?.(1);
-    }, [onZoomChange]);
-
-    // Zoom to point
-    const zoomToPoint = useCallback((
-        newScale: number,
-        centerX: number,
-        centerY: number,
-        animate = true
-    ) => {
-        if (!containerRef.current) return;
-
-        const rect = containerRef.current.getBoundingClientRect();
-        const containerCenterX = rect.width / 2;
-        const containerCenterY = rect.height / 2;
-
-        // Calculate the point relative to container center
-        const pointX = centerX - rect.left - containerCenterX;
-        const pointY = centerY - rect.top - containerCenterY;
-
-        // Calculate new translation to zoom towards that point
-        const scaleChange = newScale / transform.scale;
-        const newTranslateX = transform.translateX * scaleChange - pointX * (scaleChange - 1);
-        const newTranslateY = transform.translateY * scaleChange - pointY * (scaleChange - 1);
-
-        const constrained = constrainTranslation(newScale, newTranslateX, newTranslateY);
-
-        if (animate) {
-            setIsAnimating(true);
-            setTimeout(() => setIsAnimating(false), 300);
+        // If content is smaller than container, center it
+        if (scaledWidth <= containerRect.width) {
+            translateX = 0;
+        } else {
+            const maxTranslateX = (scaledWidth - containerRect.width) / 2 / scale;
+            translateX = Math.max(-maxTranslateX, Math.min(maxTranslateX, translateX));
         }
 
-        setTransform({
-            scale: newScale,
-            translateX: constrained.translateX,
-            translateY: constrained.translateY,
-        });
-        
-        onZoomChange?.(newScale);
-    }, [transform, containerRef, constrainTranslation, onZoomChange]);
+        if (scaledHeight <= containerRect.height) {
+            translateY = 0;
+        } else {
+            const maxTranslateY = (scaledHeight - containerRect.height) / 2 / scale;
+            translateY = Math.max(-maxTranslateY, Math.min(maxTranslateY, translateY));
+        }
 
-    // Handle touch start
+        return { x: translateX, y: translateY };
+    }, [contentRef, containerRef]);
+
+    const applyTransform = useCallback((scale: number, translateX: number, translateY: number, smooth: boolean = false) => {
+        if (!contentRef.current) return;
+        
+        const clamped = clampTranslate(translateX, translateY, scale);
+        
+        contentRef.current.style.transition = smooth ? 'transform 0.3s ease-out' : 'none';
+        contentRef.current.style.transform = `translate3d(${clamped.x}px, ${clamped.y}px, 0) scale(${scale})`;
+        contentRef.current.style.transformOrigin = 'center center';
+    }, [contentRef, clampTranslate]);
+
     const handleTouchStart = useCallback((e: React.TouchEvent) => {
-        setIsAnimating(false);
+        const gesture = gestureRef.current;
 
         if (e.touches.length === 2) {
-            // Pinch gesture start
-            e.preventDefault();
-            const distance = getDistance(e.touches[0], e.touches[1]);
-            const center = getCenter(e.touches[0], e.touches[1]);
-
-            gestureRef.current = {
-                type: 'pinch',
-                initialDistance: distance,
-                initialScale: transform.scale,
-                initialTranslateX: transform.translateX,
-                initialTranslateY: transform.translateY,
-                pinchCenterX: center.x,
-                pinchCenterY: center.y,
-                startX: center.x,
-                startY: center.y,
-                lastScale: transform.scale,
-            };
-        } else if (e.touches.length === 1) {
-            // Check for double tap
-            const now = Date.now();
-            const touch = e.touches[0];
-            const tapDistance = Math.hypot(
-                touch.clientX - lastTapRef.current.x,
-                touch.clientY - lastTapRef.current.y
-            );
-
-            if (now - lastTapRef.current.time < 300 && tapDistance < 50) {
-                // Double tap detected
-                e.preventDefault();
-                if (transform.scale > 1.1) {
-                    resetZoom();
-                } else {
-                    zoomToPoint(2.5, touch.clientX, touch.clientY, true);
-                }
-                lastTapRef.current = { time: 0, x: 0, y: 0 };
-                return;
-            }
-
-            lastTapRef.current = { time: now, x: touch.clientX, y: touch.clientY };
-
-            // Pan gesture start (only when zoomed)
-            if (transform.scale > 1) {
-                gestureRef.current = {
-                    type: 'pan',
-                    initialDistance: 0,
-                    initialScale: transform.scale,
-                    initialTranslateX: transform.translateX,
-                    initialTranslateY: transform.translateY,
-                    pinchCenterX: 0,
-                    pinchCenterY: 0,
-                    startX: touch.clientX,
-                    startY: touch.clientY,
-                    lastScale: transform.scale,
-                };
-            }
+            // Pinch start
+            gesture.isPinching = true;
+            gesture.isPanning = false;
+            gesture.isGesturing = true;
+            gesture.startDistance = getDistance(e.touches);
+            gesture.startScale = touchState.scale;
+            gesture.startTranslateX = touchState.translateX;
+            gesture.startTranslateY = touchState.translateY;
+            
+            const center = getCenter(e.touches);
+            gesture.pinchCenterX = center.x;
+            gesture.pinchCenterY = center.y;
+        } else if (e.touches.length === 1 && touchState.scale > 1) {
+            // Pan start (only when zoomed in)
+            gesture.isPanning = true;
+            gesture.isPinching = false;
+            gesture.isGesturing = true;
+            gesture.lastTouchX = e.touches[0].clientX;
+            gesture.lastTouchY = e.touches[0].clientY;
+            gesture.startTranslateX = touchState.translateX;
+            gesture.startTranslateY = touchState.translateY;
+            gesture.startX = e.touches[0].clientX;
+            gesture.startY = e.touches[0].clientY;
         }
-    }, [transform, resetZoom, zoomToPoint]);
+    }, [touchState]);
 
-    // Handle touch move
     const handleTouchMove = useCallback((e: React.TouchEvent) => {
         const gesture = gestureRef.current;
 
-        if (gesture.type === 'pinch' && e.touches.length === 2) {
-            e.preventDefault();
+        if (!gesture.isGesturing) return;
 
-            const distance = getDistance(e.touches[0], e.touches[1]);
-            const center = getCenter(e.touches[0], e.touches[1]);
-
-            // Calculate new scale
-            const scaleRatio = distance / gesture.initialDistance;
-            let newScale = gesture.initialScale * scaleRatio;
-            newScale = Math.max(minScale, Math.min(maxScale, newScale));
-
-            // Calculate pinch center movement
-            const centerDeltaX = center.x - gesture.startX;
-            const centerDeltaY = center.y - gesture.startY;
-
-            // Calculate translation adjustment for zoom-to-point effect
-            if (!containerRef.current) return;
-            const rect = containerRef.current.getBoundingClientRect();
-            const containerCenterX = rect.width / 2;
-            const containerCenterY = rect.height / 2;
-
-            const pinchPointX = gesture.pinchCenterX - rect.left - containerCenterX;
-            const pinchPointY = gesture.pinchCenterY - rect.top - containerCenterY;
-
-            const scaleChange = newScale / gesture.initialScale;
-            
-            let newTranslateX = gesture.initialTranslateX * scaleChange 
-                - pinchPointX * (scaleChange - 1) 
-                + centerDeltaX;
-            let newTranslateY = gesture.initialTranslateY * scaleChange 
-                - pinchPointY * (scaleChange - 1) 
-                + centerDeltaY;
-
-            const constrained = constrainTranslation(newScale, newTranslateX, newTranslateY);
-
-            setTransform({
-                scale: newScale,
-                translateX: constrained.translateX,
-                translateY: constrained.translateY,
-            });
-
-            gesture.lastScale = newScale;
-
-        } else if (gesture.type === 'pan' && e.touches.length === 1) {
-            e.preventDefault();
-
-            const touch = e.touches[0];
-            const deltaX = touch.clientX - gesture.startX;
-            const deltaY = touch.clientY - gesture.startY;
-
-            const newTranslateX = gesture.initialTranslateX + deltaX;
-            const newTranslateY = gesture.initialTranslateY + deltaY;
-
-            const constrained = constrainTranslation(transform.scale, newTranslateX, newTranslateY);
-
-            setTransform(prev => ({
-                ...prev,
-                translateX: constrained.translateX,
-                translateY: constrained.translateY,
-            }));
+        if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
         }
-    }, [minScale, maxScale, containerRef, constrainTranslation, transform.scale]);
 
-    // Handle touch end
+        animationFrameRef.current = requestAnimationFrame(() => {
+            if (gesture.isPinching && e.touches.length === 2) {
+                e.preventDefault();
+                
+                const currentDistance = getDistance(e.touches);
+                const scaleRatio = currentDistance / gesture.startDistance;
+                let newScale = gesture.startScale * scaleRatio;
+                
+                // Apply scale limits with elastic feel
+                if (newScale < minScale) {
+                    newScale = minScale - (minScale - newScale) * 0.5;
+                } else if (newScale > maxScale) {
+                    newScale = maxScale + (newScale - maxScale) * 0.2;
+                }
+
+                const center = getCenter(e.touches);
+                const deltaX = center.x - gesture.pinchCenterX;
+                const deltaY = center.y - gesture.pinchCenterY;
+                
+                const newTranslateX = gesture.startTranslateX + deltaX / newScale;
+                const newTranslateY = gesture.startTranslateY + deltaY / newScale;
+
+                applyTransform(newScale, newTranslateX, newTranslateY);
+                
+                setTouchState({
+                    scale: newScale,
+                    translateX: newTranslateX,
+                    translateY: newTranslateY,
+                });
+            } else if (gesture.isPanning && e.touches.length === 1) {
+                e.preventDefault();
+                
+                const deltaX = e.touches[0].clientX - gesture.lastTouchX;
+                const deltaY = e.touches[0].clientY - gesture.lastTouchY;
+                
+                gesture.lastTouchX = e.touches[0].clientX;
+                gesture.lastTouchY = e.touches[0].clientY;
+
+                const newTranslateX = touchState.translateX + deltaX / touchState.scale;
+                const newTranslateY = touchState.translateY + deltaY / touchState.scale;
+
+                applyTransform(touchState.scale, newTranslateX, newTranslateY);
+                
+                setTouchState(prev => ({
+                    ...prev,
+                    translateX: newTranslateX,
+                    translateY: newTranslateY,
+                }));
+            }
+        });
+    }, [touchState, applyTransform, minScale, maxScale]);
+
     const handleTouchEnd = useCallback((e: React.TouchEvent) => {
         const gesture = gestureRef.current;
 
-        if (e.touches.length === 0) {
-            // All fingers lifted
-            if (gesture.type !== 'none') {
-                // Snap to min scale if below threshold
-                if (transform.scale < 1) {
-                    setIsAnimating(true);
-                    setTransform({ scale: 1, translateX: 0, translateY: 0 });
-                    setTimeout(() => setIsAnimating(false), 300);
-                    onZoomChange?.(1);
-                } else {
-                    onZoomChange?.(transform.scale);
-                }
+        if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+        }
+
+        if (gesture.isPinching) {
+            // Snap back if out of bounds
+            let finalScale = touchState.scale;
+            if (finalScale < minScale) {
+                finalScale = minScale;
+            } else if (finalScale > maxScale) {
+                finalScale = maxScale;
             }
-            gestureRef.current.type = 'none';
-        } else if (e.touches.length === 1 && gesture.type === 'pinch') {
+
+            // Reset translate if zoomed out
+            let finalTranslateX = touchState.translateX;
+            let finalTranslateY = touchState.translateY;
+            
+            if (finalScale <= 1) {
+                finalTranslateX = 0;
+                finalTranslateY = 0;
+            }
+
+            const clamped = clampTranslate(finalTranslateX, finalTranslateY, finalScale);
+            
+            applyTransform(finalScale, clamped.x, clamped.y, true);
+            
+            setTouchState({
+                scale: finalScale,
+                translateX: clamped.x,
+                translateY: clamped.y,
+            });
+        }
+
+        if (e.touches.length === 0) {
+            gesture.isGesturing = false;
+            gesture.isPinching = false;
+            gesture.isPanning = false;
+        } else if (e.touches.length === 1 && gesture.isPinching) {
             // Transition from pinch to pan
-            const touch = e.touches[0];
-            gestureRef.current = {
-                type: 'pan',
-                initialDistance: 0,
-                initialScale: transform.scale,
-                initialTranslateX: transform.translateX,
-                initialTranslateY: transform.translateY,
-                pinchCenterX: 0,
-                pinchCenterY: 0,
-                startX: touch.clientX,
-                startY: touch.clientY,
-                lastScale: transform.scale,
-            };
+            gesture.isPinching = false;
+            gesture.isPanning = touchState.scale > 1;
+            gesture.lastTouchX = e.touches[0].clientX;
+            gesture.lastTouchY = e.touches[0].clientY;
         }
-    }, [transform, onZoomChange]);
+    }, [touchState, applyTransform, clampTranslate, minScale, maxScale]);
 
-    // Handle wheel zoom (for desktop/trackpad)
-    const handleWheel = useCallback((e: React.WheelEvent) => {
-        if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            const delta = -e.deltaY * 0.01;
-            const newScale = Math.max(minScale, Math.min(maxScale, transform.scale + delta));
-            zoomToPoint(newScale, e.clientX, e.clientY, false);
+    const resetZoom = useCallback(() => {
+        setTouchState({
+            scale: 1,
+            translateX: 0,
+            translateY: 0,
+        });
+        applyTransform(1, 0, 0, true);
+    }, [applyTransform]);
+
+    const zoomIn = useCallback(() => {
+        const newScale = Math.min(maxScale, touchState.scale + 0.5);
+        setTouchState(prev => ({ ...prev, scale: newScale }));
+        applyTransform(newScale, touchState.translateX, touchState.translateY, true);
+    }, [touchState, applyTransform, maxScale]);
+
+    const zoomOut = useCallback(() => {
+        const newScale = Math.max(minScale, touchState.scale - 0.5);
+        let newTranslateX = touchState.translateX;
+        let newTranslateY = touchState.translateY;
+        
+        if (newScale <= 1) {
+            newTranslateX = 0;
+            newTranslateY = 0;
         }
-    }, [transform.scale, minScale, maxScale, zoomToPoint]);
+        
+        setTouchState({ scale: newScale, translateX: newTranslateX, translateY: newTranslateY });
+        applyTransform(newScale, newTranslateX, newTranslateY, true);
+    }, [touchState, applyTransform, minScale]);
 
-    // Expose reset function
-    useEffect(() => {
-        if (containerRef.current) {
-            (containerRef.current as any).resetZoom = resetZoom;
-            (containerRef.current as any).currentScale = transform.scale;
-        }
-    }, [containerRef, resetZoom, transform.scale]);
+    const setScale = useCallback((newScale: number) => {
+        const clampedScale = Math.max(minScale, Math.min(maxScale, newScale));
+        setTouchState(prev => ({ ...prev, scale: clampedScale }));
+        applyTransform(clampedScale, touchState.translateX, touchState.translateY, true);
+    }, [touchState, applyTransform, minScale, maxScale]);
 
-    const contentStyle: React.CSSProperties = {
-        transform: `translate3d(${transform.translateX}px, ${transform.translateY}px, 0) scale(${transform.scale})`,
-        transformOrigin: 'center center',
-        transition: isAnimating ? 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'none',
-        willChange: 'transform',
-        touchAction: transform.scale > 1 ? 'none' : 'pan-y',
+    return {
+        touchState,
+        handleTouchStart,
+        handleTouchMove,
+        handleTouchEnd,
+        resetZoom,
+        zoomIn,
+        zoomOut,
+        setScale,
+        isZoomed: touchState.scale > 1,
     };
+};
+
+// --- Scroll Mode Pinch Zoom Wrapper ---
+const ZoomableScrollContainer = ({
+    children,
+    loading,
+}: {
+    children: React.ReactNode;
+    loading: boolean;
+}) => {
+    const containerRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    
+    const {
+        touchState,
+        handleTouchStart,
+        handleTouchMove,
+        handleTouchEnd,
+        resetZoom,
+        isZoomed,
+    } = usePinchZoom(contentRef, containerRef, 1, 0.5, 3);
 
     return (
-        <div
+        <div 
+            ref={containerRef}
+            className="flex-1 overflow-auto relative pt-20 pb-24 touch-none"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            onWheel={handleWheel}
             style={{ 
-                width: '100%', 
-                height: '100%', 
-                overflow: 'hidden',
-                touchAction: 'none',
+                overflowX: isZoomed ? 'auto' : 'hidden',
+                overflowY: 'auto',
             }}
         >
-            <div
-                ref={contentRef}
-                style={contentStyle}
-                className="flex justify-center items-start min-h-full"
-            >
-                {children}
-            </div>
+            {loading ? (
+                <div className="flex flex-col items-center justify-center h-full gap-4">
+                    <Loader2 size={32} className="animate-spin text-primary" />
+                    <p className="text-sm text-gray-500">Preparing Scroll View...</p>
+                </div>
+            ) : (
+                <div 
+                    ref={contentRef}
+                    className="max-w-4xl mx-auto px-4 will-change-transform"
+                    style={{ transformOrigin: 'center top' }}
+                >
+                    {children}
+                </div>
+            )}
+            
+            {/* Reset Zoom Button */}
+            {isZoomed && (
+                <button
+                    onClick={resetZoom}
+                    className="fixed bottom-24 right-4 z-30 bg-white dark:bg-gray-800 shadow-lg rounded-full p-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                >
+                    <RotateCcw size={20} />
+                </button>
+            )}
         </div>
     );
 };
@@ -487,18 +475,31 @@ const PDFReaderPage = () => {
   const [pdfDoc, setPdfDoc] = useState<any | null>(null);
   const [pageNum, setPageNum] = useState(1);
   const [numPages, setNumPages] = useState(0);
-  const [scale, setScale] = useState<number | null>(null); 
+  const [baseScale, setBaseScale] = useState<number | null>(null); 
   const [pageInput, setPageInput] = useState("1");
-  const [currentZoom, setCurrentZoom] = useState(1);
   
   // Refs
   const singleCanvasRef = useRef<HTMLCanvasElement>(null);
   const singleRenderTaskRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const book = namazBooks.find(b => b.id === bookId);
+
+  // Pinch zoom hook for single page mode
+  const {
+    touchState,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+    resetZoom,
+    zoomIn,
+    zoomOut,
+    setScale: setZoomScale,
+    isZoomed,
+  } = usePinchZoom(contentRef, containerRef, 1, 0.5, 4);
 
   // Initialize PDF worker
   useEffect(() => {
@@ -606,6 +607,13 @@ const PDFReaderPage = () => {
     };
   }, [book]);
 
+  // Reset zoom when changing pages
+  useEffect(() => {
+    if (viewMode === 'single') {
+      resetZoom();
+    }
+  }, [pageNum, viewMode]);
+
   // --- Single View Rendering ---
   useEffect(() => {
     if (viewMode !== 'single') return;
@@ -618,7 +626,7 @@ const PDFReaderPage = () => {
       try {
         const page = await pdfDoc.getPage(pageNum);
         
-        let currentScale = scale;
+        let currentScale = baseScale;
 
         if (currentScale === null) {
             const unscaledViewport = page.getViewport({ scale: 1 });
@@ -626,7 +634,7 @@ const PDFReaderPage = () => {
             const targetWidth = Math.min(containerWidth - 32, 800); 
             const newScale = targetWidth / unscaledViewport.width;
             currentScale = Math.max(0.5, Math.min(newScale, 2.0));
-            setScale(currentScale);
+            setBaseScale(currentScale);
         }
 
         await renderPdfPage(pdfDoc, pageNum, currentScale, singleCanvasRef.current, singleRenderTaskRef);
@@ -639,7 +647,7 @@ const PDFReaderPage = () => {
     };
 
     renderSinglePage();
-  }, [pdfDoc, pageNum, scale, viewMode]);
+  }, [pdfDoc, pageNum, baseScale, viewMode]);
 
   // --- Scroll Mode Helpers ---
   const handleScrollPageVisible = useCallback((visiblePageNum: number) => {
@@ -657,20 +665,21 @@ const PDFReaderPage = () => {
       }
   };
 
-  // Handle zoom change from ZoomableContainer
-  const handleZoomChange = useCallback((newZoom: number) => {
-      setCurrentZoom(newZoom);
-  }, []);
-
-  // Reset zoom
-  const handleResetZoom = () => {
-      if (containerRef.current && (containerRef.current as any).resetZoom) {
-          (containerRef.current as any).resetZoom();
-      }
+  const handleZoomIn = () => {
+    if (viewMode === 'single') {
+      zoomIn();
+    } else {
+      setBaseScale(s => Math.min(3.0, (s || 1) + 0.25));
+    }
   };
 
-  const handleZoomIn = () => setScale(s => Math.min(3.0, (s || 1) + 0.25));
-  const handleZoomOut = () => setScale(s => Math.max(0.5, (s || 1) - 0.25));
+  const handleZoomOut = () => {
+    if (viewMode === 'single') {
+      zoomOut();
+    } else {
+      setBaseScale(s => Math.max(0.5, (s || 1) - 0.25));
+    }
+  };
 
   const handlePageSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -705,6 +714,7 @@ const PDFReaderPage = () => {
   const toggleViewMode = () => {
       const newMode = viewMode === 'single' ? 'scroll' : 'single';
       setViewMode(newMode);
+      resetZoom();
       setTimeout(() => {
           if (newMode === 'scroll') {
               scrollToPage(pageNum);
@@ -766,24 +776,18 @@ const PDFReaderPage = () => {
           </div>
       </div>
 
-      {/* Zoom indicator */}
-      {currentZoom > 1.05 && viewMode === 'single' && (
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-30 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full flex items-center gap-2">
-              <span>{Math.round(currentZoom * 100)}%</span>
-              <button 
-                  onClick={handleResetZoom}
-                  className="p-0.5 hover:bg-white/20 rounded-full transition"
-              >
-                  <RotateCcw size={12} />
-              </button>
-          </div>
-      )}
-
       {/* Main Content Area */}
       {viewMode === 'single' ? (
+          // --- Single Page View with Pinch Zoom ---
           <div 
-            className="flex-1 overflow-hidden relative pt-20 pb-24"
+            className="flex-1 overflow-hidden relative pt-20 pb-24 touch-none"
             ref={containerRef}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            style={{
+              overflow: isZoomed ? 'auto' : 'hidden',
+            }}
           >
             {loading && (
                 <div className="absolute inset-0 flex items-center justify-center z-10">
@@ -806,51 +810,49 @@ const PDFReaderPage = () => {
                 </div>
             )}
 
-            {/* Zoomable Container with Single Page */}
-            <ZoomableContainer 
-                containerRef={containerRef}
-                onZoomChange={handleZoomChange}
-                minScale={0.5}
-                maxScale={4}
+            {/* Single Page Render */}
+            <div 
+                ref={contentRef}
+                className={`flex justify-center min-h-full items-center will-change-transform transition-opacity duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}
+                style={{ 
+                  transformOrigin: 'center center',
+                  minHeight: '100%',
+                }}
             >
-                <div className={`transition-opacity duration-300 ${loading ? 'opacity-0' : 'opacity-100'}`}>
-                    <div className="relative shadow-2xl rounded-sm overflow-hidden bg-white">
-                        <canvas ref={singleCanvasRef} className="block" />
-                        
-                        {rendering && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
-                                <Loader2 size={24} className="animate-spin text-primary" />
-                            </div>
-                        )}
-                    </div>
+                <div className="relative shadow-2xl rounded-sm overflow-hidden bg-white">
+                    <canvas ref={singleCanvasRef} className="block" />
+                    
+                    {rendering && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-white/50 backdrop-blur-[1px]">
+                            <Loader2 size={24} className="animate-spin text-primary" />
+                        </div>
+                    )}
                 </div>
-            </ZoomableContainer>
+            </div>
+
+            {/* Reset Zoom Button */}
+            {isZoomed && (
+                <button
+                    onClick={resetZoom}
+                    className="fixed bottom-24 right-4 z-30 bg-white dark:bg-gray-800 shadow-lg rounded-full p-3 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                >
+                    <RotateCcw size={20} />
+                </button>
+            )}
           </div>
       ) : (
-          // --- Scroll View ---
-          <div 
-            className="flex-1 overflow-y-auto relative pt-20 pb-24 px-4 bg-gray-100 dark:bg-gray-900"
-            ref={scrollContainerRef}
-          >
-             {loading ? (
-                 <div className="flex flex-col items-center justify-center h-full gap-4">
-                     <Loader2 size={32} className="animate-spin text-primary" />
-                     <p className="text-sm text-gray-500">Preparing Scroll View...</p>
-                 </div>
-             ) : (
-                 <div className="max-w-4xl mx-auto">
-                     {Array.from({ length: numPages }, (_, i) => (
-                         <LazyPdfPage 
-                            key={i + 1} 
-                            pdfDoc={pdfDoc} 
-                            pageNum={i + 1} 
-                            scale={scale || 1}
-                            onVisible={handleScrollPageVisible}
-                         />
-                     ))}
-                 </div>
-             )}
-          </div>
+          // --- Scroll View with Zoom ---
+          <ZoomableScrollContainer loading={loading}>
+              {Array.from({ length: numPages }, (_, i) => (
+                  <LazyPdfPage 
+                     key={i + 1} 
+                     pdfDoc={pdfDoc} 
+                     pageNum={i + 1} 
+                     scale={baseScale || 1}
+                     onVisible={handleScrollPageVisible}
+                  />
+              ))}
+          </ZoomableScrollContainer>
       )}
 
       {/* Floating Bottom Controls */}
@@ -904,14 +906,10 @@ const PDFReaderPage = () => {
                      <ZoomOut size={20} />
                  </button>
                  
-                 {currentZoom > 1.05 && (
-                     <button
-                         onClick={handleResetZoom}
-                         className="px-2 py-1 text-xs font-medium text-gray-500 hover:text-primary transition"
-                     >
-                         {Math.round(currentZoom * 100)}%
-                     </button>
-                 )}
+                 {/* Zoom indicator */}
+                 <span className="text-xs font-mono text-gray-400 min-w-[3rem] text-center">
+                   {Math.round((viewMode === 'single' ? touchState.scale : (baseScale || 1)) * 100)}%
+                 </span>
                  
                  <button 
                     onClick={handleZoomIn}
