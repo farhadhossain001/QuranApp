@@ -17,6 +17,7 @@ import AsmaUlHusnaPage from './pages/AsmaUlHusnaPage';
 import CalendarPage from './pages/CalendarPage';
 import QiblaPage from './pages/QiblaPage';
 import NamazShikkhaPage from './pages/NamazShikkhaPage';
+import KitabPage from './pages/KitabPage';
 import PDFReaderPage from './pages/PDFReaderPage';
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/qibla" element={<QiblaPage />} />
             <Route path="/namaz-shikkha" element={<NamazShikkhaPage />} />
+            <Route path="/kitab" element={<KitabPage />} />
             <Route path="/read-book/:bookId" element={<PDFReaderPage />} />
           </Routes>
         </Layout>

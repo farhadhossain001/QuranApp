@@ -152,6 +152,9 @@ export const translations: Record<string, Record<string, string>> = {
     // Namaz Shikkha
     namazShikkha: 'Namaz Shikkha',
     namazShikkhaDesc: 'Learn how to pray correctly',
+    // Kitab
+    kitab: 'Kitab',
+    kitabDesc: 'Islamic Books Collection',
     author: 'Author',
     readBook: 'Read Book',
     page: 'Page',
@@ -161,6 +164,14 @@ export const translations: Record<string, Record<string, string>> = {
     prevPage: 'Prev',
     searchBook: 'Search Books...',
     pdfError: 'Error loading PDF. Please check your connection.',
+    // Bookmark
+    addBookmark: 'Add Bookmark',
+    removeBookmark: 'Remove Bookmark',
+    bookmarkAdded: 'Bookmark Added',
+    bookmarkRemoved: 'Bookmark Removed',
+    lastPagePrompt: 'You were on page {page}. Would you like to continue from there?',
+    continue: 'Continue',
+    startOver: 'Start Over',
   },
   bn: {
     home: 'হোম',
@@ -314,6 +325,9 @@ export const translations: Record<string, Record<string, string>> = {
     // Namaz Shikkha
     namazShikkha: 'নামাজ শিক্ষা',
     namazShikkhaDesc: 'সহীহ্ নামাজ শিক্ষা বই',
+    // Kitab
+    kitab: 'কিতাব',
+    kitabDesc: 'ইসলামিক বই সংগ্রহ',
     author: 'লেখক',
     readBook: 'বইটি পড়ুন',
     page: 'পৃষ্ঠা',
@@ -323,5 +337,13 @@ export const translations: Record<string, Record<string, string>> = {
     prevPage: 'পূর্ববর্তী',
     searchBook: 'বই অনুসন্ধান করুন...',
     pdfError: 'পিডিএফ লোড করতে সমস্যা হয়েছে। সংযোগ পরীক্ষা করুন।',
+    // Bookmark
+    addBookmark: 'বুকমার্ক যোগ করুন',
+    removeBookmark: 'বুকমার্ক সরান',
+    bookmarkAdded: 'বুকমার্ক যোগ করা হয়েছে',
+    bookmarkRemoved: 'বুকমার্ক সরানো হয়েছে',
+    lastPagePrompt: 'আপনি পৃষ্ঠা {page} এ ছিলেন। আপনি কি সেখান থেকে চালিয়ে যেতে চান?',
+    continue: 'চালিয়ে যান',
+    startOver: 'শুরু থেকে',
   }
 };
