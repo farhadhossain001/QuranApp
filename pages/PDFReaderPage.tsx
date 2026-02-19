@@ -4,7 +4,53 @@ import { useParams, useNavigate } from 'react-router-dom';
 import * as pdfjsLib from 'pdfjs-dist';
 import { useAppStore } from '../context/Store';
 import { namazBooks } from '../utils/namazBooks';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, ArrowLeft, Loader2, AlertCircle, FileText, ScrollText, RectangleHorizontal } from 'lucide-react';
+import { kitabBooks } from '../utils/kitabBooks';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, ArrowLeft, Loader2, AlertCircle, FileText, ScrollText, RectangleHorizontal, Bookmark, BookmarkCheck, X } from 'lucide-react';
+
+// --- Local Storage Keys ---
+const BOOKMARKS_STORAGE_KEY = 'pdf_bookmarks';
+const LAST_PAGE_STORAGE_KEY = 'pdf_last_page';
+
+// --- Types ---
+interface BookBookmark {
+  bookId: string;
+  pageNum: number;
+  timestamp: number;
+  title?: string;
+}
+
+interface LastPage {
+  bookId: string;
+  pageNum: number;
+  timestamp: number;
+}
+
+// --- Helper Functions for Local Storage ---
+const getBookmarks = (): BookBookmark[] => {
+  try {
+    const stored = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveBookmarks = (bookmarks: BookBookmark[]) => {
+  localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(bookmarks));
+};
+
+const getLastPages = (): LastPage[] => {
+  try {
+    const stored = localStorage.getItem(LAST_PAGE_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+const saveLastPages = (pages: LastPage[]) => {
+  localStorage.setItem(LAST_PAGE_STORAGE_KEY, JSON.stringify(pages));
+};
 
 // --- Helper: Render Page Function ---
 const renderPdfPage = async (
@@ -122,7 +168,7 @@ const LazyPdfPage = ({
 const PDFReaderPage = () => {
   const { bookId } = useParams<{ bookId: string }>();
   const navigate = useNavigate();
-  const { settings, formatNumber } = useAppStore();
+  const { settings, formatNumber, t } = useAppStore();
   
   // States
   const [loading, setLoading] = useState(true);
@@ -137,6 +183,17 @@ const PDFReaderPage = () => {
   const [numPages, setNumPages] = useState(0);
   const [scale, setScale] = useState<number | null>(null); 
   const [pageInput, setPageInput] = useState("1");
+  
+  // Bookmark State
+  const [bookmarks, setBookmarks] = useState<BookBookmark[]>([]);
+  const [isBookmarked, setIsBookmarked] = useState(false);
+  const [showBookmarkToast, setShowBookmarkToast] = useState(false);
+  const [bookmarkToastMsg, setBookmarkToastMsg] = useState('');
+  
+  // Last Page Restore State
+  const [showRestorePrompt, setShowRestorePrompt] = useState(false);
+  const [lastPage, setLastPage] = useState<number | null>(null);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   
   // Interaction State
   const transformRef = useRef({ x: 0, y: 0, scale: 1 });
@@ -167,7 +224,21 @@ const PDFReaderPage = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const book = namazBooks.find(b => b.id === bookId);
+  const book = namazBooks.find(b => b.id === bookId) || kitabBooks.find(b => b.id === bookId);
+
+  // Load bookmarks from local storage
+  useEffect(() => {
+    const storedBookmarks = getBookmarks();
+    setBookmarks(storedBookmarks);
+  }, []);
+
+  // Check if current page is bookmarked
+  useEffect(() => {
+    if (bookId && pageNum) {
+      const bookmarked = bookmarks.some(b => b.bookId === bookId && b.pageNum === pageNum);
+      setIsBookmarked(bookmarked);
+    }
+  }, [bookId, pageNum, bookmarks]);
 
   // Initialize PDF worker
   useEffect(() => {
@@ -181,6 +252,26 @@ const PDFReaderPage = () => {
   useEffect(() => {
       setPageInput(pageNum.toString());
   }, [pageNum]);
+
+  // Save last page when page changes
+  useEffect(() => {
+    if (bookId && pageNum && !loading && initialLoadDone) {
+      const lastPages = getLastPages();
+      const existingIndex = lastPages.findIndex(p => p.bookId === bookId);
+      const newEntry: LastPage = {
+        bookId,
+        pageNum,
+        timestamp: Date.now()
+      };
+      
+      if (existingIndex >= 0) {
+        lastPages[existingIndex] = newEntry;
+      } else {
+        lastPages.push(newEntry);
+      }
+      saveLastPages(lastPages);
+    }
+  }, [bookId, pageNum, loading, initialLoadDone]);
 
   // Initial Auto-Fit Logic
   useEffect(() => {
@@ -210,6 +301,7 @@ const PDFReaderPage = () => {
     setUseFallbackViewer(false);
     setPdfDoc(null);
     setShowManualFallback(false);
+    setInitialLoadDone(false);
 
     let active = true;
     const controller = new AbortController();
@@ -243,6 +335,19 @@ const PDFReaderPage = () => {
                 setPdfDoc(pdf);
                 setNumPages(pdf.numPages);
                 setLoading(false);
+                
+                // Check for last page after PDF is loaded
+                if (bookId) {
+                  const lastPages = getLastPages();
+                  const lastPageEntry = lastPages.find(p => p.bookId === bookId);
+                  if (lastPageEntry && lastPageEntry.pageNum > 1) {
+                    setLastPage(lastPageEntry.pageNum);
+                    setShowRestorePrompt(true);
+                  } else {
+                    setInitialLoadDone(true);
+                  }
+                }
+                
                 return; 
             } catch (renderError) {
                 console.error("PDF Parsing error", renderError);
@@ -263,7 +368,7 @@ const PDFReaderPage = () => {
       active = false;
       controller.abort();
     };
-  }, [book]);
+  }, [book, bookId]);
 
   // --- Single View Render ---
   useEffect(() => {
@@ -288,6 +393,54 @@ const PDFReaderPage = () => {
     };
     renderSinglePage();
   }, [pdfDoc, pageNum, scale, viewMode]);
+
+  // --- Bookmark Handlers ---
+  const toggleBookmark = () => {
+    if (!bookId || !pageNum) return;
+    
+    const existingIndex = bookmarks.findIndex(b => b.bookId === bookId && b.pageNum === pageNum);
+    
+    if (existingIndex >= 0) {
+      // Remove bookmark
+      const newBookmarks = bookmarks.filter((_, i) => i !== existingIndex);
+      setBookmarks(newBookmarks);
+      saveBookmarks(newBookmarks);
+      showToast(t('bookmarkRemoved') || 'Bookmark removed');
+    } else {
+      // Add bookmark
+      const newBookmark: BookBookmark = {
+        bookId,
+        pageNum,
+        timestamp: Date.now(),
+        title: book ? (settings.appLanguage === 'bn' ? book.title_bn : book.title_en) : undefined
+      };
+      const newBookmarks = [...bookmarks, newBookmark];
+      setBookmarks(newBookmarks);
+      saveBookmarks(newBookmarks);
+      showToast(t('bookmarkAdded') || 'Bookmark added');
+    }
+  };
+
+  const showToast = (message: string) => {
+    setBookmarkToastMsg(message);
+    setShowBookmarkToast(true);
+    setTimeout(() => setShowBookmarkToast(false), 2000);
+  };
+
+  // --- Restore Last Page Handlers ---
+  const handleRestoreLastPage = () => {
+    if (lastPage && lastPage <= numPages) {
+      setPageNum(lastPage);
+      scrollToPage(lastPage);
+    }
+    setShowRestorePrompt(false);
+    setInitialLoadDone(true);
+  };
+
+  const handleStartFromBeginning = () => {
+    setShowRestorePrompt(false);
+    setInitialLoadDone(true);
+  };
 
   // --- INTERACTION HANDLERS ---
 
@@ -546,15 +699,84 @@ const PDFReaderPage = () => {
                 <h1 className="flex-1 text-center font-bold text-sm text-gray-900 dark:text-white truncate px-2">
                     {settings.appLanguage === 'bn' ? book.title_bn : book.title_en}
                 </h1>
-                <button 
-                    onClick={toggleViewMode}
-                    className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition text-primary"
-                    title={viewMode === 'single' ? "Switch to Scroll View" : "Switch to Page View"}
-                >
-                    {viewMode === 'single' ? <ScrollText size={20} /> : <RectangleHorizontal size={20} />}
-                </button>
+                <div className="flex items-center gap-1">
+                    {/* Bookmark Button */}
+                    <button 
+                        onClick={toggleBookmark}
+                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                        title={isBookmarked ? (t('removeBookmark') || 'Remove Bookmark') : (t('addBookmark') || 'Add Bookmark')}
+                    >
+                        {isBookmarked ? (
+                            <BookmarkCheck size={20} className="text-primary" />
+                        ) : (
+                            <Bookmark size={20} className="text-gray-500 dark:text-gray-400" />
+                        )}
+                    </button>
+                    <button 
+                        onClick={toggleViewMode}
+                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition text-primary"
+                        title={viewMode === 'single' ? "Switch to Scroll View" : "Switch to Page View"}
+                    >
+                        {viewMode === 'single' ? <ScrollText size={20} /> : <RectangleHorizontal size={20} />}
+                    </button>
+                </div>
           </div>
       </div>
+
+      {/* Restore Last Page Prompt */}
+      {showRestorePrompt && lastPage && (
+          <div className="absolute top-20 left-4 right-4 z-30 flex justify-center">
+              <div className="bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-700 shadow-lg rounded-2xl p-4 max-w-md w-full animate-in fade-in slide-in-from-top-4 duration-300">
+                  <div className="flex items-start gap-3">
+                      <div className="p-2 bg-primary/10 rounded-full">
+                          <Bookmark size={20} className="text-primary" />
+                      </div>
+                      <div className="flex-1">
+                          <h3 className="font-bold text-gray-900 dark:text-white text-sm mb-1">
+                              {t('continueReading') || 'Continue Reading?'}
+                          </h3>
+                          <p className="text-gray-500 dark:text-gray-400 text-xs mb-3">
+                              {(t('lastPagePrompt') || 'You were on page {page}. Would you like to continue from there?').replace('{page}', String(lastPage))}
+                          </p>
+                          <div className="flex gap-2">
+                              <button 
+                                  onClick={handleRestoreLastPage}
+                                  className="flex-1 bg-primary text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-primary-dark transition"
+                              >
+                                  {t('continue') || 'Continue'}
+                              </button>
+                              <button 
+                                  onClick={handleStartFromBeginning}
+                                  className="flex-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+                              >
+                                  {t('startOver') || 'Start Over'}
+                              </button>
+                          </div>
+                      </div>
+                      <button 
+                          onClick={handleStartFromBeginning}
+                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                      >
+                          <X size={18} />
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Bookmark Toast */}
+      {showBookmarkToast && (
+          <div className="absolute top-20 left-1/2 transform -translate-x-1/2 z-30 animate-in fade-in slide-in-from-top-4 duration-300">
+              <div className="bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-full text-sm font-medium shadow-lg flex items-center gap-2">
+                  {isBookmarked ? (
+                      <BookmarkCheck size={16} className="text-primary" />
+                  ) : (
+                      <Bookmark size={16} />
+                  )}
+                  {bookmarkToastMsg}
+              </div>
+          </div>
+      )}
 
       {/* Main Content Area */}
       {viewMode === 'single' ? (
@@ -572,7 +794,7 @@ const PDFReaderPage = () => {
                     <div className="flex flex-col items-center gap-4 bg-white/90 dark:bg-surface-dark/90 p-6 rounded-2xl shadow-xl backdrop-blur-sm">
                         <Loader2 size={32} className="animate-spin text-primary" />
                         <div className="text-center">
-                            <p className="text-sm font-semibold text-gray-900 dark:text-white">Downloading Book...</p>
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">{t('loading') || 'Loading...'}</p>
                         </div>
                     </div>
                 </div>
@@ -607,7 +829,7 @@ const PDFReaderPage = () => {
              {loading ? (
                  <div className="flex flex-col items-center justify-center h-full gap-4">
                      <Loader2 size={32} className="animate-spin text-primary" />
-                     <p className="text-sm text-gray-500">Preparing Scroll View...</p>
+                     <p className="text-sm text-gray-500">{t('loading') || 'Loading...'}</p>
                  </div>
              ) : (
                  <div 

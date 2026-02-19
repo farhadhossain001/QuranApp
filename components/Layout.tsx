@@ -8,7 +8,6 @@ import {
   SkipBack, SkipForward, Repeat, Repeat1, Volume2, VolumeX, Gauge, Loader2, 
   ArrowLeft, SlidersHorizontal, Mic, Check, ChevronUp
 } from 'lucide-react';
-import LanguagePopup from './LanguagePopup';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -429,10 +428,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-background-light dark:bg-background-dark text-gray-900 dark:text-gray-100 transition-colors duration-300">
-        
-        {/* Language Selection Popup */}
-        <LanguagePopup />
-
         {/* Top Header */}
         <header className="sticky top-0 z-40 w-full backdrop-blur flex-none transition-colors duration-500 lg:z-50 border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-surface-dark/95">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

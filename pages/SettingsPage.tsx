@@ -1,10 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../context/Store';
-import { Moon, Sun, Monitor, Type, Globe, Mic, BookA, MapPin, Loader2, Search, Crosshair } from 'lucide-react';
+import { Moon, Sun, Monitor, Type, Globe, MapPin, Loader2, Search, Crosshair } from 'lucide-react';
 
 const SettingsPage = () => {
-  const { settings, updateSettings, t, setHeaderTitle, reciters } = useAppStore();
+  const { settings, updateSettings, t, setHeaderTitle } = useAppStore();
   const [detecting, setDetecting] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -251,40 +251,6 @@ const SettingsPage = () => {
                 {t('bangla')}
             </button>
         </div>
-      </section>
-
-      {/* Translation - Redirect hint */}
-      <section className="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-gray-200 dark:border-gray-800">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <BookA size={20} className="text-primary" />
-            {t('translationLanguage')}
-        </h2>
-        <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-xl text-sm text-gray-600 dark:text-gray-300">
-             To manage specific translations, open a Surah and use the Settings icon in the top right.
-        </div>
-      </section>
-
-      {/* Reciter */}
-      <section className="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-gray-200 dark:border-gray-800">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Mic size={20} className="text-primary" />
-            {t('reciter')}
-        </h2>
-        <select 
-            value={settings.reciterId}
-            onChange={(e) => updateSettings({ reciterId: parseInt(e.target.value) })}
-            className="w-full p-3 rounded-xl bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary/50"
-        >
-            {reciters.length > 0 ? (
-                reciters.map((reciter) => (
-                    <option key={reciter.id} value={reciter.id}>
-                        {reciter.reciter_name} {reciter.style ? `(${reciter.style})` : ''}
-                    </option>
-                ))
-            ) : (
-                <option value={7}>Mishary Rashid Al-Afasy</option>
-            )}
-        </select>
       </section>
 
       {/* Appearance */}
