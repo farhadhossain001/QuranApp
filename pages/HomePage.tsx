@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { BookOpen, ArrowRight } from 'lucide-react';
 import { useAppStore } from '../context/Store';
 import PrayerTimesWidget from '../components/PrayerTimesWidget';
-import { PrayerTimeIcon, QuranIcon, HadithIcon, AsmaUlHusnaIcon, CalendarIcon, QiblaIcon, NamazIcon, kitabIcon, BisoyvittikIcon } from '../components/CustomIcons';
+import { PrayerTimeIcon, QuranIcon, HadithIcon, AsmaUlHusnaIcon, CalendarIcon, QiblaIcon, NamazIcon, kitabIcon, BisoyvittikIcon, RadioIcon } from '../components/CustomIcons';
 
 const HomePage = () => {
   const { recentSurah, t, getSurahName } = useAppStore();
@@ -117,6 +117,14 @@ const HomePage = () => {
                <BisoyvittikIcon size={45} className="text-emerald-600 dark:text-emerald-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('bisoyvittik')}</span>
+          </Link>
+
+          {/* Radio Category */}
+          <Link to="/radio" className="group flex flex-col items-center gap-2">
+            <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+               <RadioIcon size={45} className="text-red-600 dark:text-red-400" />
+            </div>
+            <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('radio')}</span>
           </Link>
 
         </div>

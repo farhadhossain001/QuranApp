@@ -181,6 +181,22 @@ export const translations: Record<string, Record<string, string>> = {
     lastPagePrompt: 'You were on page {page}. Would you like to continue from there?',
     continue: 'Continue',
     startOver: 'Start Over',
+    // Tafsir
+    tafsir: 'Tafsir',
+    noTafsirFound: 'No tafsir available for this verse',
+    selectTafsir: 'Select Tafsir',
+    selectLanguage: 'Language',
+    // Radio
+    radio: 'Radio',
+    radioDesc: 'Listen to Islamic Radio Stations',
+    radioStations: 'Radio Stations',
+    nowPlaying: 'Now Playing',
+    selectStation: 'Select a Station',
+    play: 'Play',
+    pause: 'Pause',
+    stop: 'Stop',
+    loadingStations: 'Loading stations...',
+    stationsError: 'Failed to load stations',
   },
   bn: {
     home: 'হোম',
@@ -363,5 +379,21 @@ export const translations: Record<string, Record<string, string>> = {
     lastPagePrompt: 'আপনি পৃষ্ঠা {page} এ ছিলেন। আপনি কি সেখান থেকে চালিয়ে যেতে চান?',
     continue: 'চালিয়ে যান',
     startOver: 'শুরু থেকে',
+    // Tafsir
+    tafsir: 'তাফসির',
+    noTafsirFound: 'এই আয়াতের জন্য কোন তাফসির নেই',
+    selectTafsir: 'তাফসির নির্বাচন করুন',
+    selectLanguage: 'ভাষা',
+    // Radio
+    radio: 'রেডিও',
+    radioDesc: 'ইসলামিক রেডিও স্টেশন শুনুন',
+    radioStations: 'রেডিও স্টেশন',
+    nowPlaying: 'এখন চলছে',
+    selectStation: 'একটি স্টেশন নির্বাচন করুন',
+    play: 'চালান',
+    pause: 'বিরতি',
+    stop: 'বন্ধ',
+    loadingStations: 'স্টেশন লোড হচ্ছে...',
+    stationsError: 'স্টেশন লোড করতে ব্যর্থ',
   }
 };

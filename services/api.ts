@@ -1,5 +1,5 @@
 
-import { Surah, Ayah, HadithBook, HadithChapter, Hadith, TranslationResource, Reciter, NameOfAllah } from '../types';
+import { Surah, Ayah, HadithBook, HadithChapter, Hadith, TranslationResource, Reciter, NameOfAllah, TafsirResource, Tafsir, RadioStation, RadioApiResponse } from '../types';
 import { asmaData } from '../utils/asmaData';
 
 const BASE_URL = 'https://api.quran.com/api/v4';
@@ -395,3 +395,92 @@ export const getAsmaUlHusna = async (language: 'en' | 'bn'): Promise<NameOfAllah
         return asmaData[language] || asmaData['en'];
     }
 }
+
+// --- Tafsir API Functions ---
+
+// Cache for tafsir resources
+let tafsirsCache: TafsirResource[] | null = null;
+
+// Fetch available tafsirs
+export const getAvailableTafsirs = async (): Promise<TafsirResource[]> => {
+    if (tafsirsCache) return tafsirsCache;
+    
+    try {
+        const response = await fetch(`${BASE_URL}/resources/tafsirs`);
+        if (!response.ok) throw new Error('Failed to fetch tafsirs');
+        const data = await response.json();
+        tafsirsCache = data.tafsirs;
+        return tafsirsCache || [];
+    } catch (error) {
+        console.error(error);
+        return [];
+    }
+};
+
+// Fetch tafsir for a specific ayah
+export const getTafsirForAyah = async (verseKey: string, tafsirId: number = 169): Promise<Tafsir | null> => {
+    try {
+        const response = await fetch(`${BASE_URL}/tafsirs/${tafsirId}/by_ayah/${verseKey}`);
+        if (!response.ok) throw new Error('Failed to fetch tafsir');
+        const data = await response.json();
+        return data.tafsir;
+    } catch (error) {
+        console.error(error);
+        return null;
+    }
+};
+
+// --- Radio API Functions ---
+
+// Cache for radio stations
+let radioStationsCache: RadioStation[] | null = null;
+
+// Radio API URL
+const RADIO_API_URL = 'https://raw.githubusercontent.com/uthumany/radio-api/main/client/public/api/stations.json';
+
+// Fetch all radio stations
+export const getRadioStations = async (): Promise<RadioStation[]> => {
+    if (radioStationsCache) return radioStationsCache;
+    
+    try {
+        const response = await fetch(RADIO_API_URL);
+        if (!response.ok) throw new Error('Failed to fetch radio stations');
+        const data: RadioApiResponse = await response.json();
+        radioStationsCache = data.stations;
+        return radioStationsCache || [];
+    } catch (error) {
+        console.error(error);
+        return [];
+    }
+};
+
+// Get stations filtered by language
+export const getStationsByLanguage = async (language: string): Promise<RadioStation[]> => {
+    const stations = await getRadioStations();
+    return stations.filter(station => 
+        station.language.toLowerCase() === language.toLowerCase()
+    );
+};
+
+// Get stations filtered by genre
+export const getStationsByGenre = async (genre: string): Promise<RadioStation[]> => {
+    const stations = await getRadioStations();
+    return stations.filter(station => 
+        station.genre.some(g => g.toLowerCase() === genre.toLowerCase())
+    );
+};
+
+// Get unique languages from stations
+export const getAvailableLanguages = async (): Promise<string[]> => {
+    const stations = await getRadioStations();
+    const languages = new Set(stations.map(s => s.language));
+    return Array.from(languages).sort();
+};
+
+// Get unique genres from stations
+export const getAvailableGenres = async (): Promise<string[]> => {
+    const stations = await getRadioStations();
+    const genres = new Set<string>();
+    stations.forEach(s => s.genre.forEach(g => genres.add(g)));
+    return Array.from(genres).sort();
+};

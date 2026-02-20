@@ -1,9 +1,9 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { getChapterInfo, getVerses } from '../services/api';
-import { Surah, Ayah, ARABIC_FONT_SIZES, FONT_SIZES } from '../types';
-import { Play, Pause, Bookmark as BookmarkIcon, Share2 } from 'lucide-react';
+import { getChapterInfo, getVerses, getTafsirForAyah, getAvailableTafsirs } from '../services/api';
+import { Surah, Ayah, ARABIC_FONT_SIZES, FONT_SIZES, TafsirResource } from '../types';
+import { Play, Pause, Bookmark as BookmarkIcon, Share2, BookOpen, X } from 'lucide-react';
 import { useAppStore } from '../context/Store';
 import SettingsDrawer from '../components/SettingsDrawer';
 
@@ -21,6 +21,40 @@ const SurahPage = () => {
   } = useAppStore();
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Tafsir state
+  const [showTafsirModal, setShowTafsirModal] = useState(false);
+  const [selectedAyahForTafsir, setSelectedAyahForTafsir] = useState<Ayah | null>(null);
+  const [tafsirContent, setTafsirContent] = useState<string>('');
+  const [tafsirLoading, setTafsirLoading] = useState(false);
+  const [availableTafsirs, setAvailableTafsirs] = useState<TafsirResource[]>([]);
+  const [selectedTafsirId, setSelectedTafsirId] = useState<number>(() => {
+    // Set default tafsir based on app language
+    // Bengali: 165 (Tafsir Ahsanul Bayaan), English: 169 (Ibn Kathir Abridged)
+    return settings.appLanguage === 'bn' ? 165 : 169;
+  });
+  const [selectedLanguage, setSelectedLanguage] = useState<string>(() => {
+    // Set default language based on app language
+    return settings.appLanguage === 'bn' ? 'bengali' : 'english';
+  });
+
+  // Fetch available tafsirs on mount
+  useEffect(() => {
+    const fetchTafsirs = async () => {
+      const tafsirs = await getAvailableTafsirs();
+      setAvailableTafsirs(tafsirs);
+    };
+    fetchTafsirs();
+  }, []);
+
+  // Update tafsir when app language changes
+  useEffect(() => {
+    // Bengali: 165 (Tafsir Ahsanul Bayaan), English: 169 (Ibn Kathir Abridged)
+    const defaultLanguage = settings.appLanguage === 'bn' ? 'bengali' : 'english';
+    const defaultTafsirId = settings.appLanguage === 'bn' ? 165 : 169;
+    setSelectedLanguage(defaultLanguage);
+    setSelectedTafsirId(defaultTafsirId);
+  }, [settings.appLanguage]);
 
   // Set initial title or update when Surah loads
   useEffect(() => {
@@ -106,6 +140,78 @@ const SurahPage = () => {
       return resource ? resource.name : 'Unknown';
   };
 
+  // Handle Tafsir
+  const handleTafsir = async (ayah: Ayah) => {
+    setSelectedAyahForTafsir(ayah);
+    setShowTafsirModal(true);
+    setTafsirLoading(true);
+    setTafsirContent('');
+    
+    const tafsir = await getTafsirForAyah(ayah.verse_key, selectedTafsirId);
+    if (tafsir) {
+      setTafsirContent(tafsir.text);
+    }
+    setTafsirLoading(false);
+  };
+
+  // Handle tafsir selection change
+  const handleTafsirChange = async (tafsirId: number) => {
+    setSelectedTafsirId(tafsirId);
+    if (selectedAyahForTafsir) {
+      setTafsirLoading(true);
+      const tafsir = await getTafsirForAyah(selectedAyahForTafsir.verse_key, tafsirId);
+      if (tafsir) {
+        setTafsirContent(tafsir.text);
+      }
+      setTafsirLoading(false);
+    }
+  };
+
+  // Group tafsirs by language
+  const groupedTafsirs = availableTafsirs.reduce((acc, tafsir) => {
+    const lang = tafsir.language_name;
+    if (!acc[lang]) {
+      acc[lang] = [];
+    }
+    acc[lang].push(tafsir);
+    return acc;
+  }, {} as Record<string, TafsirResource[]>);
+
+  // Sort languages: Bengali first if app is Bangla, English first otherwise
+  const sortedLanguages = Object.keys(groupedTafsirs).sort((a, b) => {
+    if (settings.appLanguage === 'bn') {
+      if (a.toLowerCase() === 'bengali') return -1;
+      if (b.toLowerCase() === 'bengali') return 1;
+    }
+    if (a.toLowerCase() === 'english') return -1;
+    if (b.toLowerCase() === 'english') return 1;
+    return a.localeCompare(b);
+  });
+
+  // Get tafsirs for selected language
+  const tafsirsForSelectedLanguage = groupedTafsirs[selectedLanguage] || [];
+
+  // Handle language change
+  const handleLanguageChange = (language: string) => {
+    setSelectedLanguage(language);
+    // Auto-select first tafsir of the new language
+    const tafsirsForLang = groupedTafsirs[language] || [];
+    if (tafsirsForLang.length > 0) {
+      const newTafsirId = tafsirsForLang[0].id;
+      setSelectedTafsirId(newTafsirId);
+      // Fetch tafsir content for the new selection
+      if (selectedAyahForTafsir) {
+        setTafsirLoading(true);
+        getTafsirForAyah(selectedAyahForTafsir.verse_key, newTafsirId).then((tafsir) => {
+          if (tafsir) {
+            setTafsirContent(tafsir.text);
+          }
+          setTafsirLoading(false);
+        });
+      }
+    }
+  };
+
   if (!surah && loading && page === 1) return <div className="p-8 text-center">{t('loading')}</div>;
 
   return (
@@ -147,6 +253,9 @@ const SurahPage = () => {
                         <div className="flex gap-2">
                             <button onClick={() => handlePlay(ayah)} className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition ${isPlaying ? 'text-primary' : 'text-gray-500'}`}>
                                 {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+                            </button>
+                            <button onClick={() => handleTafsir(ayah)} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition text-gray-500 hover:text-primary dark:hover:text-primary-dark" title="Tafsir">
+                                <BookOpen size={18} />
                             </button>
                             <button onClick={() => handleBookmark(ayah)} className={`p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition ${isBookmarked(ayah.verse_number) ? 'text-secondary fill-current' : 'text-gray-500'}`}>
                                 <BookmarkIcon size={18} />
@@ -190,6 +299,85 @@ const SurahPage = () => {
           >
             {loading ? t('loading') : t('loadMore')}
           </button>
+        </div>
+      )}
+
+      {/* Tafsir Modal */}
+      {showTafsirModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-3">
+                <BookOpen className="text-primary dark:text-primary-dark" size={24} />
+                <div>
+                  <h3 className="font-semibold text-lg">
+                    {t('tafsir')} - {surah?.name_simple} {selectedAyahForTafsir?.verse_number}
+                  </h3>
+                  <p className="text-xs text-gray-500">{selectedAyahForTafsir?.verse_key}</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowTafsirModal(false)}
+                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Tafsir Selector */}
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700 space-y-3">
+              {/* Language Selector */}
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">{t('selectLanguage') || 'Language'}</label>
+                <select
+                  value={selectedLanguage}
+                  onChange={(e) => handleLanguageChange(e.target.value)}
+                  className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {sortedLanguages.map((language) => (
+                    <option key={language} value={language}>
+                      {language}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Tafsir Selector */}
+              <div>
+                <label className="block text-xs text-gray-500 mb-1">{t('selectTafsir') || 'Tafsir'}</label>
+                <select
+                  value={selectedTafsirId}
+                  onChange={(e) => handleTafsirChange(parseInt(e.target.value))}
+                  className="w-full p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  {tafsirsForSelectedLanguage.map((tafsir) => (
+                    <option key={tafsir.id} value={tafsir.id}>
+                      {tafsir.name} - {tafsir.author_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {tafsirLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              ) : tafsirContent ? (
+                <div 
+                  className="prose dark:prose-invert max-w-none text-sm leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: tafsirContent }}
+                />
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  {t('noTafsirFound') || 'No tafsir available for this verse'}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

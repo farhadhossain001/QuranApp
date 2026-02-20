@@ -142,3 +142,60 @@ export interface NameOfAllah {
   meaning?: string; // Detailed meaning
   audio?: string; // Audio URL
 }
+
+// Tafsir Interfaces
+export interface TafsirResource {
+  id: number;
+  name: string;
+  author_name: string;
+  slug: string;
+  language_name: string;
+  translated_name: {
+    name: string;
+    language_name: string;
+  };
+}
+
+export interface Tafsir {
+  resource_id: number;
+  resource_name: string;
+  language_id: number;
+  slug: string;
+  translated_name: {
+    name: string;
+    language_name: string;
+  };
+  text: string; // HTML content
+}
+
+// Radio Interfaces
+export interface RadioStation {
+  id: number;
+  name: string;
+  nameAr: string;
+  description: string;
+  country: string;
+  language: string;
+  genre: string[];
+  streamUrl: string;
+  streamFormat: string;
+  bitrate: string;
+  website: string;
+  status: string;
+  lastChecked: string;
+}
+
+export interface RadioApiResponse {
+  status: string;
+  version: string;
+  timestamp: string;
+  total: number;
+  stations: RadioStation[];
+  metadata: {
+    apiVersion: string;
+    documentation: string;
+    updateFrequency: string;
+    license: string;
+    sources: string[];
+  };
+}

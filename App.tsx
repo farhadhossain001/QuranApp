@@ -22,6 +22,7 @@ import PDFReaderPage from './pages/PDFReaderPage';
 import BisoyvittikPage from './pages/BisoyvittikPage';
 import BisoyvittikSubcategoriesPage from './pages/BisoyvittikSubcategoriesPage';
 import BisoyvittikItemsPage from './pages/BisoyvittikItemsPage';
+import RadioPage from './pages/RadioPage';
 
 function App() {
   return (
@@ -48,6 +49,7 @@ function App() {
             <Route path="/bisoyvittik/:categoryId/subcategories" element={<BisoyvittikSubcategoriesPage />} />
             <Route path="/bisoyvittik/:subcategoryId/items" element={<BisoyvittikItemsPage />} />
             <Route path="/read-book/:bookId" element={<PDFReaderPage />} />
+            <Route path="/radio" element={<RadioPage />} />
           </Routes>
         </Layout>
       </HashRouter>
