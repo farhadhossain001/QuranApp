@@ -19,6 +19,9 @@ import QiblaPage from './pages/QiblaPage';
 import NamazShikkhaPage from './pages/NamazShikkhaPage';
 import KitabPage from './pages/KitabPage';
 import PDFReaderPage from './pages/PDFReaderPage';
+import BisoyvittikPage from './pages/BisoyvittikPage';
+import BisoyvittikSubcategoriesPage from './pages/BisoyvittikSubcategoriesPage';
+import BisoyvittikItemsPage from './pages/BisoyvittikItemsPage';
 
 function App() {
   return (
@@ -41,6 +44,9 @@ function App() {
             <Route path="/qibla" element={<QiblaPage />} />
             <Route path="/namaz-shikkha" element={<NamazShikkhaPage />} />
             <Route path="/kitab" element={<KitabPage />} />
+            <Route path="/bisoyvittik" element={<BisoyvittikPage />} />
+            <Route path="/bisoyvittik/:categoryId/subcategories" element={<BisoyvittikSubcategoriesPage />} />
+            <Route path="/bisoyvittik/:subcategoryId/items" element={<BisoyvittikItemsPage />} />
             <Route path="/read-book/:bookId" element={<PDFReaderPage />} />
           </Routes>
         </Layout>

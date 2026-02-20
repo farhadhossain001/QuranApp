@@ -433,14 +433,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="py-4 flex items-center justify-between gap-4">
                     {/* Left Side: Logo or Back/Title */}
-                    <div className="flex items-center gap-3 flex-shrink-0 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
                         {isHome ? (
                             <Link to="/" className="flex items-center gap-2 text-primary dark:text-primary-dark font-bold text-xl">
                                 <BookOpen size={24} />
                                 <span>Qur'an Light</span>
                             </Link>
                         ) : (
-                            <div className="flex items-center gap-3 text-gray-900 dark:text-gray-100 min-w-0">
+                            <div className="flex items-center gap-3 text-gray-900 dark:text-gray-100 min-w-0 flex-1">
                                 <button 
                                     onClick={() => navigate(-1)} 
                                     className="p-1 -ml-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition text-gray-600 dark:text-gray-300 flex-shrink-0"
@@ -448,7 +448,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                 >
                                     <ArrowLeft size={24} />
                                 </button>
-                                <h1 className="font-bold text-xl truncate">{headerTitle}</h1>
+                                <h1 className="font-bold text-xl truncate max-w-[200px] sm:max-w-[300px] md:max-w-[400px]">{headerTitle}</h1>
                             </div>
                         )}
                     </div>

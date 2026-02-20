@@ -1,11 +1,17 @@
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import * as pdfjsLib from 'pdfjs-dist';
 import { useAppStore } from '../context/Store';
 import { namazBooks } from '../utils/namazBooks';
 import { kitabBooks } from '../utils/kitabBooks';
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, ArrowLeft, Loader2, AlertCircle, FileText, ScrollText, RectangleHorizontal, Bookmark, BookmarkCheck, X } from 'lucide-react';
+
+interface ExternalPdf {
+  title: string;
+  pdfUrl: string;
+  type: string;
+}
 
 // --- Local Storage Keys ---
 const BOOKMARKS_STORAGE_KEY = 'pdf_bookmarks';
@@ -110,10 +116,11 @@ const LazyPdfPage = ({
     scale, 
     onVisible 
 }: { 
-    pdfDoc: any, 
-    pageNum: number, 
-    scale: number, 
-    onVisible: (num: number) => void 
+    pdfDoc: any; 
+    pageNum: number; 
+    scale: number; 
+    onVisible: (num: number) => void;
+    key?: number;
 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
@@ -167,8 +174,38 @@ const LazyPdfPage = ({
 
 const PDFReaderPage = () => {
   const { bookId } = useParams<{ bookId: string }>();
+  const location = useLocation();
   const navigate = useNavigate();
   const { settings, formatNumber, t } = useAppStore();
+  
+  // Check for external PDF from navigation state (from Bisoyvittik)
+  const externalPdf = location.state as ExternalPdf | null | undefined;
+  
+  // Find book from local sources or create from external source - memoized to prevent infinite loops
+  const book = useMemo(() => {
+    const localBook = namazBooks.find(b => b.id === bookId) || kitabBooks.find(b => b.id === bookId);
+    
+    if (localBook) {
+      return localBook;
+    }
+    
+    if (externalPdf?.pdfUrl) {
+      return {
+        id: bookId || 'external',
+        title_en: externalPdf.title || 'PDF Document',
+        title_bn: externalPdf.title || 'PDF ডকুমেন্ট',
+        pdfUrl: externalPdf.pdfUrl,
+        author: '',
+        color: 'bg-gray-100'
+      };
+    }
+    
+    return null;
+  }, [bookId, externalPdf?.pdfUrl, externalPdf?.title]);
+  
+  console.log('PDF Reader - bookId:', bookId);
+  console.log('PDF Reader - externalPdf:', externalPdf);
+  console.log('PDF Reader - book:', book);
   
   // States
   const [loading, setLoading] = useState(true);
@@ -223,8 +260,7 @@ const PDFReaderPage = () => {
   const scrollContentRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  const book = namazBooks.find(b => b.id === bookId) || kitabBooks.find(b => b.id === bookId);
+  const lastFetchedUrlRef = useRef<string | null>(null);
 
   // Load bookmarks from local storage
   useEffect(() => {
@@ -295,20 +331,38 @@ const PDFReaderPage = () => {
 
   // Fetch Logic
   useEffect(() => {
-    if (!book) return;
+    if (!book || !book.pdfUrl) {
+      console.error('No book or pdfUrl found');
+      setLoading(false);
+      setUseFallbackViewer(true);
+      return;
+    }
 
+    // Skip if we're already fetching or have fetched this URL
+    if (lastFetchedUrlRef.current === book.pdfUrl && pdfDoc) {
+      console.log('Skipping fetch - same URL already loaded');
+      return;
+    }
+
+    lastFetchedUrlRef.current = book.pdfUrl;
     setLoading(true);
     setUseFallbackViewer(false);
     setPdfDoc(null);
     setShowManualFallback(false);
     setInitialLoadDone(false);
+    setScale(null);
 
     let active = true;
     const controller = new AbortController();
 
     const fetchPdf = async () => {
+      console.log('Fetching PDF:', book.pdfUrl);
+      
+      // Try direct fetch first (works for CORS-enabled URLs)
       const strategies = [
-        { name: 'CodeTabs', url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(book.pdfUrl)}` }
+        { name: 'Direct', url: book.pdfUrl },
+        { name: 'CodeTabs Proxy', url: `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(book.pdfUrl)}` },
+        { name: 'AllOrigins Proxy', url: `https://api.allorigins.win/raw?url=${encodeURIComponent(book.pdfUrl)}` }
       ];
 
       for (const strategy of strategies) {
@@ -355,10 +409,12 @@ const PDFReaderPage = () => {
             }
           }
         } catch (err: any) {
+          console.error(`Fetch error for ${strategy.name}:`, err.message);
           if (err.name === 'AbortError') return;
         }
       }
       if (active) {
+        console.error('All fetch strategies failed, using fallback viewer');
         setUseFallbackViewer(true);
         setLoading(false);
       }
@@ -368,7 +424,7 @@ const PDFReaderPage = () => {
       active = false;
       controller.abort();
     };
-  }, [book, bookId]);
+  }, [book?.pdfUrl, bookId]);
 
   // --- Single View Render ---
   useEffect(() => {
@@ -658,7 +714,20 @@ const PDFReaderPage = () => {
       inputRef.current?.blur();
   };
 
-  if (!book) return <div>Book not found</div>;
+  if (!book) {
+    return (
+      <div className="fixed inset-0 z-50 bg-gray-100 dark:bg-gray-900 flex flex-col h-full items-center justify-center">
+        <AlertCircle size={48} className="text-red-500 mb-4" />
+        <p className="text-gray-600 dark:text-gray-400">PDF not found</p>
+        <button 
+          onClick={() => navigate(-1)} 
+          className="mt-4 px-4 py-2 bg-primary text-white rounded-lg"
+        >
+          {t('back') || 'Go Back'}
+        </button>
+      </div>
+    );
+  }
 
   // Fallback Viewer UI
   if (useFallbackViewer) {
@@ -804,7 +873,7 @@ const PDFReaderPage = () => {
             <div 
                 ref={contentRef}
                 className="flex justify-center items-center min-h-full transition-opacity duration-300 origin-center"
-                style={{ opacity: loading ? 0 : 1 }}
+                style={{ opacity: (loading || !scale) ? 0 : 1 }}
             >
                 <div className="relative shadow-2xl rounded-sm overflow-hidden bg-white">
                     <canvas ref={singleCanvasRef} className="block" />

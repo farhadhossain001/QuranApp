@@ -14,6 +14,8 @@ export const translations: Record<string, Record<string, string>> = {
     verses: 'Verses',
     loading: 'Loading...',
     loadMore: 'Load More Verses',
+    loadMoreItems: 'Load More',
+    back: 'Back',
     noBookmarks: 'No bookmarks yet',
     noBookmarksDesc: 'Tap the bookmark icon on any verse to save it here for quick access.',
     startReading: 'Start Reading',
@@ -152,6 +154,13 @@ export const translations: Record<string, Record<string, string>> = {
     // Namaz Shikkha
     namazShikkha: 'Namaz Shikkha',
     namazShikkhaDesc: 'Learn how to pray correctly',
+    // Bisoyvittik
+    bisoyvittik: 'Subject Categories',
+    bisoyvittikDesc: 'Browse Islamic content by category',
+    categoriesLoading: 'Loading categories...',
+    categoriesError: 'Failed to load categories',
+    subcategories: 'Subcategories',
+    items: 'items',
     // Kitab
     kitab: 'Kitab',
     kitabDesc: 'Islamic Books Collection',
@@ -187,6 +196,8 @@ export const translations: Record<string, Record<string, string>> = {
     verses: 'আয়াত',
     loading: 'লোড হচ্ছে...',
     loadMore: 'আরও আয়াত লোড করুন',
+    loadMoreItems: 'আরও লোড করুন',
+    back: 'পেছনে',
     noBookmarks: 'কোন বুকমার্ক নেই',
     noBookmarksDesc: 'দ্রুত অ্যাক্সেসের জন্য যেকোনো আয়াতে বুকমার্ক আইকনে আলতো চাপুন।',
     startReading: 'পড়া শুরু করুন',
@@ -325,6 +336,13 @@ export const translations: Record<string, Record<string, string>> = {
     // Namaz Shikkha
     namazShikkha: 'নামাজ শিক্ষা',
     namazShikkhaDesc: 'সহীহ্ নামাজ শিক্ষা বই',
+    // Bisoyvittik
+    bisoyvittik: 'বিষয়ভিত্তিক',
+    bisoyvittikDesc: 'বিষয় অনুযায়ী ইসলামিক কন্টেন্ট ব্রাউজ করুন',
+    categoriesLoading: 'বিভাগ লোড হচ্ছে...',
+    categoriesError: 'বিভাগ লোড করতে ব্যর্থ',
+    subcategories: 'উপবিভাগ',
+    items: 'আইটেম',
     // Kitab
     kitab: 'কিতাব',
     kitabDesc: 'ইসলামিক বই সংগ্রহ',
