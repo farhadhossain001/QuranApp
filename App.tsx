@@ -23,6 +23,8 @@ import BisoyvittikPage from './pages/BisoyvittikPage';
 import BisoyvittikSubcategoriesPage from './pages/BisoyvittikSubcategoriesPage';
 import BisoyvittikItemsPage from './pages/BisoyvittikItemsPage';
 import RadioPage from './pages/RadioPage';
+import DuaPage from './pages/DuaPage';
+import DuaDetailsPage from './pages/DuaDetailsPage';
 
 function App() {
   return (
@@ -50,6 +52,8 @@ function App() {
             <Route path="/bisoyvittik/:subcategoryId/items" element={<BisoyvittikItemsPage />} />
             <Route path="/read-book/:bookId" element={<PDFReaderPage />} />
             <Route path="/radio" element={<RadioPage />} />
+            <Route path="/dua" element={<DuaPage />} />
+            <Route path="/dua/:categoryId" element={<DuaDetailsPage />} />
           </Routes>
         </Layout>
       </HashRouter>

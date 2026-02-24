@@ -131,12 +131,24 @@ const BisoyvittikItemsPage = () => {
       
       if (!response.ok) throw new Error('Failed to fetch items');
       
-      const data: ItemsResponse = await response.json();
+      const data = await response.json();
+      
+      // Handle case when there are no items (API returns code 204 with error in data)
+      if (data.code === 204 || (data.data && data.data.error)) {
+        if (page === 1) {
+          setItems([]);
+        }
+        setTotalPages(1);
+        setTotalItems(0);
+        return;
+      }
+      
+      const itemsData = data.data || [];
       
       if (page === 1) {
-        setItems(data.data || []);
+        setItems(itemsData);
       } else {
-        setItems(prev => [...prev, ...(data.data || [])]);
+        setItems(prev => [...prev, ...itemsData]);
       }
       
       setTotalPages(data.links?.pages_number || 1);
@@ -621,8 +633,13 @@ const BisoyvittikItemsPage = () => {
       )}
 
       {!loading && items.length === 0 && (
-        <div className="text-center py-10 text-gray-500">
-          {t('noResults')}
+        <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
+          <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+            <FileText className="w-8 h-8 text-gray-400" />
+          </div>
+          <p className="text-gray-500 dark:text-gray-400 text-center">
+            {t('noItemsFound')}
+          </p>
         </div>
       )}
 

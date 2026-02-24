@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { BookOpen, ArrowRight } from 'lucide-react';
 import { useAppStore } from '../context/Store';
 import PrayerTimesWidget from '../components/PrayerTimesWidget';
-import { PrayerTimeIcon, QuranIcon, HadithIcon, AsmaUlHusnaIcon, CalendarIcon, QiblaIcon, NamazIcon, kitabIcon, BisoyvittikIcon, RadioIcon } from '../components/CustomIcons';
+import { PrayerTimeIcon, QuranIcon, HadithIcon, AsmaUlHusnaIcon, CalendarIcon, QiblaIcon, NamazIcon, kitabIcon, BisoyvittikIcon, RadioIcon, DuaIcon } from '../components/CustomIcons';
 
 const HomePage = () => {
   const { recentSurah, t, getSurahName } = useAppStore();
@@ -49,85 +49,93 @@ const HomePage = () => {
           
           {/* Prayer Times Category */}
           <Link to="/prayer-times" className="group flex flex-col items-center gap-2">
-            <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <PrayerTimeIcon size={45} className="text-blue-600 dark:text-blue-400" />
+            <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+               <PrayerTimeIcon size={35} className="text-blue-600 dark:text-blue-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('prayerTimes')}</span>
           </Link>
 
           {/* Quran Category */}
           <Link to="/quran" className="group flex flex-col items-center gap-2">
-            <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <QuranIcon size={45} className="text-emerald-600 dark:text-emerald-400" />
+            <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+               <QuranIcon size={35} className="text-emerald-600 dark:text-emerald-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('quran')}</span>
           </Link>
 
           {/* Hadith Category */}
           <Link to="/hadith" className="group flex flex-col items-center gap-2">
-            <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <HadithIcon size={45} className="text-indigo-600 dark:text-indigo-400" />
+            <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+               <HadithIcon size={35} className="text-indigo-600 dark:text-indigo-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('hadith')}</span>
           </Link>
 
            {/* Namaz Shikkha Category */}
            <Link to="/namaz-shikkha" className="group flex flex-col items-center gap-2">
-            <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <NamazIcon size={45} className="text-blue-600 dark:text-blue-400" />
+            <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+               <NamazIcon size={35} className="text-blue-600 dark:text-blue-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('namazShikkha')}</span>
           </Link>
 
            {/* Asma-ul-Husna Category */}
            <Link to="/asma-ul-husna" className="group flex flex-col items-center gap-2">
-            <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <AsmaUlHusnaIcon size={45} className="text-purple-600 dark:text-purple-400" />
+            <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+               <AsmaUlHusnaIcon size={35} className="text-purple-600 dark:text-purple-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('asmaUlHusna')}</span>
           </Link>
           
           {/* Calendar Category */}
           <Link to="/calendar" className="group flex flex-col items-center gap-2">
-            <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <CalendarIcon size={45} className="text-cyan-600 dark:text-cyan-400" />
+            <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+               <CalendarIcon size={35} className="text-cyan-600 dark:text-cyan-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('calendar')}</span>
           </Link>
 
           {/* Qibla Category */}
           <Link to="/qibla" className="group flex flex-col items-center gap-2">
-            <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <QiblaIcon size={45} className="text-orange-600 dark:text-orange-400" />
+            <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+               <QiblaIcon size={35} className="text-orange-600 dark:text-orange-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('qibla')}</span>
           </Link>
 
           {/* Kitab Category */}
           <Link to="/kitab" className="group flex flex-col items-center gap-2">
-            <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               {kitabIcon({ size: 45, className: "text-rose-600 dark:text-rose-400" })}
+            <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+               {kitabIcon({ size: 35, className: "text-rose-600 dark:text-rose-400" })}
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('kitab')}</span>
           </Link>
 
           {/* Bisoyvittik Category */}
           <Link to="/bisoyvittik" className="group flex flex-col items-center gap-2">
-            <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <BisoyvittikIcon size={45} className="text-emerald-600 dark:text-emerald-400" />
+            <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+               <BisoyvittikIcon size={35} className="text-emerald-600 dark:text-emerald-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('bisoyvittik')}</span>
           </Link>
 
           {/* Radio Category */}
-          <Link to="/radio" className="group flex flex-col items-center gap-2">
-            <div className="w-[72px] h-[72px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <RadioIcon size={45} className="text-red-600 dark:text-red-400" />
-            </div>
-            <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('radio')}</span>
-          </Link>
+           <Link to="/radio" className="group flex flex-col items-center gap-2">
+             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+                <RadioIcon size={35} className="text-red-600 dark:text-red-400" />
+             </div>
+             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('radio')}</span>
+           </Link>
 
-        </div>
+           {/* Dua Category */}
+           <Link to="/dua" className="group flex flex-col items-center gap-2">
+             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+                <DuaIcon size={35} className="text-teal-600 dark:text-teal-400" />
+             </div>
+             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('dua')}</span>
+           </Link>
+
+         </div>
       </div>
     </div>
   );

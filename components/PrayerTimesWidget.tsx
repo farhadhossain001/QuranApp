@@ -2,16 +2,49 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useAppStore } from '../context/Store';
 import { getPrayerTimes } from '../services/api';
-import { MapPin, Calendar, Clock, ArrowRight } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { MapPin, Calendar, Clock, ArrowRight, AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 
 const PRAYER_NAMES = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
 
+// Helper to check if current time is within a prohibited period
+const isProhibitedTime = (currentTime: Date, prohibitedTimes: any): { isProhibited: boolean; name: string; start: string; end: string } | null => {
+    if (!prohibitedTimes) return null;
+    
+    const currentHours = currentTime.getHours();
+    const currentMinutes = currentTime.getMinutes();
+    const currentTotalMinutes = currentHours * 60 + currentMinutes;
+    
+    const checkPeriod = (name: string, period: { start: string; end: string }) => {
+        if (!period || !period.start || !period.end) return false;
+        const [startH, startM] = period.start.split(':').map(Number);
+        const [endH, endM] = period.end.split(':').map(Number);
+        const startTotal = startH * 60 + startM;
+        const endTotal = endH * 60 + endM;
+        
+        return currentTotalMinutes >= startTotal && currentTotalMinutes <= endTotal;
+    };
+    
+    if (prohibitedTimes.sunrise && checkPeriod('sunrise', prohibitedTimes.sunrise)) {
+        return { isProhibited: true, name: 'sunrise', ...prohibitedTimes.sunrise };
+    }
+    if (prohibitedTimes.noon && checkPeriod('noon', prohibitedTimes.noon)) {
+        return { isProhibited: true, name: 'noon', ...prohibitedTimes.noon };
+    }
+    if (prohibitedTimes.sunset && checkPeriod('sunset', prohibitedTimes.sunset)) {
+        return { isProhibited: true, name: 'sunset', ...prohibitedTimes.sunset };
+    }
+    
+    return null;
+};
+
 const PrayerTimesWidget = () => {
     const { settings, t, formatNumber } = useAppStore();
+    const navigate = useNavigate();
     const [apiData, setApiData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [showProhibited, setShowProhibited] = useState(false);
 
     // Fetch Data
     useEffect(() => {
@@ -104,13 +137,30 @@ const PrayerTimesWidget = () => {
     const timings = apiData.timings;
     const dateData = apiData.date;
     const hijri = dateData.hijri;
+    const prohibitedTimes = apiData.prohibited_times;
+    
+    // Check if currently in prohibited time
+    const prohibitedStatus = isProhibitedTime(currentTime, prohibitedTimes);
     
     // Determine current prayer (the one before next)
     const currentPrayerIndex = nextIndex === 0 ? 4 : nextIndex - 1; 
     const currentPrayerName = PRAYER_NAMES[currentPrayerIndex] || 'Isha'; // Safety fallback
 
     return (
-        <div className="rounded-2xl shadow-lg mb-6 overflow-hidden flex flex-col font-sans bg-white dark:bg-surface-dark">
+        <div 
+            onClick={() => navigate('/prayer-times')}
+            className="rounded-2xl shadow-lg mb-6 overflow-hidden flex flex-col font-sans bg-white dark:bg-surface-dark cursor-pointer hover:shadow-xl transition-shadow duration-300"
+        >
+            
+            {/* Prohibited Time Warning Banner */}
+            {prohibitedStatus && (
+                <div className="bg-red-500 text-white px-4 py-2 flex items-center justify-center gap-2 animate-pulse">
+                    <AlertTriangle size={16} />
+                    <span className="text-xs font-bold uppercase">
+                        {t('prohibitedTime')} - {t(`prohibited_${prohibitedStatus.name}`)} ({prohibitedStatus.start} - {prohibitedStatus.end})
+                    </span>
+                </div>
+            )}
             
             {/* TOP SECTION: Hero / Countdown */}
             <div className="bg-primary dark:bg-primary-dark text-white p-5 relative overflow-hidden">
@@ -151,7 +201,11 @@ const PrayerTimesWidget = () => {
             <div className="p-3">
                 <div className="flex justify-between items-center mb-3 px-1">
                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('prayerTimes')}</span>
-                    <Link to="/settings" className="text-[10px] text-primary dark:text-primary-dark flex items-center gap-1 hover:underline">
+                    <Link 
+                        to="/settings" 
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-[10px] text-primary dark:text-primary-dark flex items-center gap-1 hover:underline"
+                    >
                         <MapPin size={10} />
                         <span className="max-w-[100px] truncate">{settings.location.address || 'Location'}</span>
                         <ArrowRight size={10} />
@@ -190,6 +244,57 @@ const PrayerTimesWidget = () => {
                         )
                     })}
                 </div>
+                
+                {/* Prohibited Times Section */}
+                {prohibitedTimes && (
+                    <div className="mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowProhibited(!showProhibited);
+                            }}
+                            className="w-full flex items-center justify-between text-[10px] font-bold text-red-500 uppercase tracking-widest mb-2 hover:text-red-600 transition-colors"
+                        >
+                            <div className="flex items-center gap-1">
+                                <AlertTriangle size={10} />
+                                {t('prohibitedTimes')}
+                            </div>
+                            {showProhibited ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </button>
+                        
+                        {showProhibited && (
+                            <div className="grid grid-cols-3 gap-2 text-center animate-in fade-in duration-200">
+                                {/* Sunrise Prohibited */}
+                                <div className={`p-2 rounded-lg text-xs ${prohibitedStatus?.name === 'sunrise' ? 'bg-red-100 dark:bg-red-900/30 border border-red-500' : 'bg-red-50 dark:bg-red-900/10'}`}>
+                                    <div className={`font-bold ${prohibitedStatus?.name === 'sunrise' ? 'text-red-600 dark:text-red-400' : 'text-red-500 dark:text-red-400'}`}>
+                                        {t('prohibited_sunrise')}
+                                    </div>
+                                    <div className={`text-[10px] ${prohibitedStatus?.name === 'sunrise' ? 'text-red-500 dark:text-red-300' : 'text-red-400 dark:text-red-500'}`}>
+                                        {prohibitedTimes.sunrise?.start} - {prohibitedTimes.sunrise?.end}
+                                    </div>
+                                </div>
+                                {/* Noon Prohibited */}
+                                <div className={`p-2 rounded-lg text-xs ${prohibitedStatus?.name === 'noon' ? 'bg-red-100 dark:bg-red-900/30 border border-red-500' : 'bg-red-50 dark:bg-red-900/10'}`}>
+                                    <div className={`font-bold ${prohibitedStatus?.name === 'noon' ? 'text-red-600 dark:text-red-400' : 'text-red-500 dark:text-red-400'}`}>
+                                        {t('prohibited_noon')}
+                                    </div>
+                                    <div className={`text-[10px] ${prohibitedStatus?.name === 'noon' ? 'text-red-500 dark:text-red-300' : 'text-red-400 dark:text-red-500'}`}>
+                                        {prohibitedTimes.noon?.start} - {prohibitedTimes.noon?.end}
+                                    </div>
+                                </div>
+                                {/* Sunset Prohibited */}
+                                <div className={`p-2 rounded-lg text-xs ${prohibitedStatus?.name === 'sunset' ? 'bg-red-100 dark:bg-red-900/30 border border-red-500' : 'bg-red-50 dark:bg-red-900/10'}`}>
+                                    <div className={`font-bold ${prohibitedStatus?.name === 'sunset' ? 'text-red-600 dark:text-red-400' : 'text-red-500 dark:text-red-400'}`}>
+                                        {t('prohibited_sunset')}
+                                    </div>
+                                    <div className={`text-[10px] ${prohibitedStatus?.name === 'sunset' ? 'text-red-500 dark:text-red-300' : 'text-red-400 dark:text-red-500'}`}>
+                                        {prohibitedTimes.sunset?.start} - {prohibitedTimes.sunset?.end}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );

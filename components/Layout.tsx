@@ -6,7 +6,7 @@ import { getSpecificAyahAudio } from '../services/api';
 import { 
   Home, Bookmark, Settings, Search, Play, Pause, X, Moon, Sun, BookOpen, 
   SkipBack, SkipForward, Repeat, Repeat1, Volume2, VolumeX, Gauge, Loader2, 
-  ArrowLeft, SlidersHorizontal, Mic, Check, ChevronUp
+  ArrowLeft, SlidersHorizontal, Mic, Check, ChevronUp, BookMarked
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -407,7 +407,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const navItems = [
     { icon: <Home size={20} />, label: t('home'), path: '/' },
-    { icon: <Search size={20} />, label: t('search'), path: '/search' },
+    { icon: <BookOpen size={20} />, label: t('quran'), path: '/quran' },
+    { icon: <BookMarked size={20} />, label: t('hadith'), path: '/hadith' },
     { icon: <Bookmark size={20} />, label: t('saved'), path: '/bookmarks' },
     { icon: <Settings size={20} />, label: t('settings'), path: '/settings' },
   ];
@@ -509,18 +510,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* Mobile Bottom Nav - Conditionally rendered only on Home for Mobile */}
         {isHome && (
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-surface-dark border-t border-gray-200 dark:border-gray-800 z-40 pb-safe">
-                <div className="flex justify-around items-center h-16">
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 pb-safe px-4 py-2">
+                <div className="flex items-center justify-center gap-1 bg-gray-100/80 dark:bg-gray-800/80 p-2 rounded-full border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm shadow-lg">
                     {navItems.map((item) => {
                         const isActive = location.pathname === item.path;
                         return (
                             <Link 
                                 key={item.path} 
                                 to={item.path}
-                                className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${isActive ? 'text-primary dark:text-primary-dark' : 'text-gray-500 dark:text-gray-400'}`}
+                                className={`flex flex-col items-center justify-center px-3 py-1.5 rounded-full transition-all ${
+                                    isActive 
+                                    ? 'bg-white dark:bg-surface-dark text-primary dark:text-primary-dark shadow-sm ring-1 ring-black/5 dark:ring-white/5' 
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                                }`}
                             >
-                                {item.icon}
-                                <span className="text-[10px] font-medium">{item.label}</span>
+                                {React.cloneElement(item.icon as React.ReactElement<any>, { size: 18 })}
+                                <span className="text-[10px] font-medium mt-0.5">{item.label}</span>
                             </Link>
                         );
                     })}

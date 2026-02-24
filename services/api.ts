@@ -139,22 +139,73 @@ export const searchVerses = async (query: string, page = 1) => {
     }
 }
 
-// Prayer Times
+// Prayer Times - Using Islamic API
 export const getPrayerTimes = async (lat: number, lng: number, dateObj?: Date) => {
   try {
-    const date = dateObj || new Date();
-    // Padding date components to ensure DD-MM-YYYY format
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
-    const year = date.getFullYear();
-    const dateStr = `${day}-${month}-${year}`;
-
-    const url = `https://api.aladhan.com/v1/timings/${dateStr}?latitude=${lat}&longitude=${lng}&method=1&school=1`;
+    // Build URL for Islamic API
+    // Note: The Islamic API doesn't support date parameter, it returns today's times
+    const url = `https://islamicapi.com/api/v1/prayer-time/?lat=${lat}&lon=${lng}&method=1&school=2&api_key=${ISLAMIC_API_KEY}`;
     
     const response = await fetch(url);
     if (!response.ok) throw new Error("Failed to fetch prayer times");
-    const data = await response.json();
-    return data.data; // Aladhan returns { code: 200, status: "OK", data: { ... } }
+    const result = await response.json();
+    
+    if (result.code !== 200 || result.status !== 'success') {
+      throw new Error("API returned error status");
+    }
+    
+    // Transform the response to match the expected structure
+    // The components expect: timings (object with prayer times), date (with hijri info)
+    const data = result.data;
+    
+    // Transform times to timings format (the new API uses 'times' instead of 'timings')
+    // Also ensure the time format is consistent (no timezone suffix needed)
+    const timings = {
+      Fajr: data.times.Fajr,
+      Sunrise: data.times.Sunrise,
+      Dhuhr: data.times.Dhuhr,
+      Asr: data.times.Asr,
+      Maghrib: data.times.Maghrib,
+      Isha: data.times.Isha,
+      Imsak: data.times.Imsak,
+      Midnight: data.times.Midnight,
+      Firstthird: data.times.Firstthird,
+      Lastthird: data.times.Lastthird,
+      Sunset: data.times.Sunset
+    };
+    
+    // Transform date structure to match expected format
+    const date = {
+      readable: data.date.readable,
+      timestamp: data.date.timestamp,
+      hijri: {
+        date: data.date.hijri.date,
+        format: data.date.hijri.format,
+        day: data.date.hijri.day,
+        weekday: data.date.hijri.weekday,
+        month: {
+          number: data.date.hijri.month.number,
+          en: data.date.hijri.month.en,
+          ar: data.date.hijri.month.ar,
+          days: data.date.hijri.month.days
+        },
+        year: data.date.hijri.year,
+        designation: data.date.hijri.designation,
+        holidays: data.date.hijri.holidays || [],
+        adjustedHolidays: data.date.hijri.adjustedHolidays || [],
+        method: data.date.hijri.method,
+        shift: data.date.hijri.shift
+      },
+      gregorian: data.date.gregorian
+    };
+    
+    return {
+      timings,
+      date,
+      qibla: data.qibla,
+      prohibited_times: data.prohibited_times,
+      timezone: data.timezone
+    };
   } catch (e) {
     console.error(e);
     return null;

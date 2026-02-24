@@ -3,12 +3,42 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useAppStore } from '../context/Store';
 import { getPrayerTimes } from '../services/api';
 import { 
-    ChevronLeft, ChevronRight, Moon, Sun, CloudSun, Sunrise, Sunset
+    Moon, Sun, CloudSun, Sunrise, Sunset, AlertTriangle
 } from 'lucide-react';
+
+// Helper to check if current time is within a prohibited period
+const isProhibitedTime = (currentTime: Date, prohibitedTimes: any): { isProhibited: boolean; name: string; start: string; end: string } | null => {
+    if (!prohibitedTimes) return null;
+    
+    const currentHours = currentTime.getHours();
+    const currentMinutes = currentTime.getMinutes();
+    const currentTotalMinutes = currentHours * 60 + currentMinutes;
+    
+    const checkPeriod = (name: string, period: { start: string; end: string }) => {
+        if (!period || !period.start || !period.end) return false;
+        const [startH, startM] = period.start.split(':').map(Number);
+        const [endH, endM] = period.end.split(':').map(Number);
+        const startTotal = startH * 60 + startM;
+        const endTotal = endH * 60 + endM;
+        
+        return currentTotalMinutes >= startTotal && currentTotalMinutes <= endTotal;
+    };
+    
+    if (prohibitedTimes.sunrise && checkPeriod('sunrise', prohibitedTimes.sunrise)) {
+        return { isProhibited: true, name: 'sunrise', ...prohibitedTimes.sunrise };
+    }
+    if (prohibitedTimes.noon && checkPeriod('noon', prohibitedTimes.noon)) {
+        return { isProhibited: true, name: 'noon', ...prohibitedTimes.noon };
+    }
+    if (prohibitedTimes.sunset && checkPeriod('sunset', prohibitedTimes.sunset)) {
+        return { isProhibited: true, name: 'sunset', ...prohibitedTimes.sunset };
+    }
+    
+    return null;
+};
 
 const PrayerTimesPage = () => {
     const { t, setHeaderTitle, settings, formatNumber } = useAppStore();
-    const [currentDate, setCurrentDate] = useState(new Date());
     const [apiData, setApiData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     
@@ -25,36 +55,16 @@ const PrayerTimesPage = () => {
         return () => clearInterval(timer);
     }, []);
 
-    // Check if viewing today
-    const isToday = useMemo(() => {
-        return currentDate.getDate() === now.getDate() &&
-               currentDate.getMonth() === now.getMonth() &&
-               currentDate.getFullYear() === now.getFullYear();
-    }, [currentDate, now]);
-
-    // Fetch data when currentDate or location changes
+    // Fetch data when location changes (Note: Islamic API only returns today's times)
     useEffect(() => {
         setLoading(true);
-        // Ensure we pass the date object correctly
-        getPrayerTimes(settings.location.latitude, settings.location.longitude, currentDate)
+        getPrayerTimes(settings.location.latitude, settings.location.longitude)
             .then(data => {
                 if(data) setApiData(data);
                 setLoading(false);
             })
             .catch(() => setLoading(false));
-    }, [currentDate, settings.location.latitude, settings.location.longitude]);
-
-    const handlePrevDay = () => {
-        const prev = new Date(currentDate);
-        prev.setDate(prev.getDate() - 1);
-        setCurrentDate(prev);
-    };
-
-    const handleNextDay = () => {
-        const next = new Date(currentDate);
-        next.setDate(next.getDate() + 1);
-        setCurrentDate(next);
-    };
+    }, [settings.location.latitude, settings.location.longitude]);
 
     const formatTime12 = (time24: string) => {
         if (!time24) return '--:--';
@@ -65,9 +75,9 @@ const PrayerTimesPage = () => {
         return `${formatNumber(hours)}:${formatNumber(m)} ${suffix}`;
     };
 
-    // Calculate Next Prayer and Countdown (Only relevant if isToday)
+    // Calculate Next Prayer and Countdown
     const nextPrayerInfo = useMemo(() => {
-        if (!apiData || !isToday) return { name: 'Fajr', time: '00:00:00', percent: 0 };
+        if (!apiData) return { name: 'Fajr', time: '00:00:00', percent: 0 };
         
         const timings = apiData.timings;
         const currentTime = now; 
@@ -94,9 +104,6 @@ const PrayerTimesPage = () => {
 
         if (!found) {
              nextName = 'Fajr';
-             // For countdown to tomorrow's Fajr, we ideally need tomorrow's time
-             // But for simplicity/continuity we use today's Fajr time + 1 day
-             // Or better, just 0 percent to indicate cycle reset
              const tStr = timings['Fajr'].split(' ')[0];
              const [h, m] = tStr.split(':').map(Number);
              targetTime = new Date(currentTime);
@@ -115,7 +122,7 @@ const PrayerTimesPage = () => {
         const percent = Math.max(0, Math.min(100, (diff / totalMs) * 100));
 
         return { name: nextName, time: timeStr, percent };
-    }, [apiData, now, isToday, formatNumber]);
+    }, [apiData, now, formatNumber]);
 
     if (loading || !apiData) {
         return (
@@ -132,8 +139,12 @@ const PrayerTimesPage = () => {
 
     const timings = apiData.timings;
     const dateData = apiData.date;
+    const prohibitedTimes = apiData.prohibited_times;
     
-    // Only API supported prayers
+    // Check if currently in prohibited time
+    const prohibitedStatus = isProhibitedTime(now, prohibitedTimes);
+    
+    // Combined prayer and prohibited times in chronological order
     const rows = [
         {
             id: 'fajr',
@@ -152,12 +163,28 @@ const PrayerTimesPage = () => {
             type: 'event'
         },
         {
+            id: 'prohibited_sunrise',
+            label: t('prohibited_sunrise'),
+            icon: <AlertTriangle size={20} />,
+            startTime: prohibitedTimes?.sunrise?.start,
+            endTime: prohibitedTimes?.sunrise?.end,
+            type: 'prohibited'
+        },
+        {
             id: 'dhuhr',
             label: t('dhuhr'),
             icon: <Sun size={20} />,
             startTime: timings.Dhuhr,
             endTime: timings.Asr,
             type: 'prayer'
+        },
+        {
+            id: 'prohibited_noon',
+            label: t('prohibited_noon'),
+            icon: <AlertTriangle size={20} />,
+            startTime: prohibitedTimes?.noon?.start,
+            endTime: prohibitedTimes?.noon?.end,
+            type: 'prohibited'
         },
         {
             id: 'asr',
@@ -176,6 +203,14 @@ const PrayerTimesPage = () => {
             type: 'prayer'
         },
         {
+            id: 'prohibited_sunset',
+            label: t('prohibited_sunset'),
+            icon: <AlertTriangle size={20} />,
+            startTime: prohibitedTimes?.sunset?.start,
+            endTime: prohibitedTimes?.sunset?.end,
+            type: 'prohibited'
+        },
+        {
             id: 'isha',
             label: t('isha'),
             icon: <Moon size={20} />,
@@ -187,6 +222,16 @@ const PrayerTimesPage = () => {
 
     return (
         <div className="max-w-md mx-auto pb-10">
+            {/* Prohibited Time Warning Banner */}
+            {prohibitedStatus && (
+                <div className="bg-red-500 text-white px-4 py-3 rounded-xl mb-4 flex items-center justify-center gap-2 animate-pulse">
+                    <AlertTriangle size={20} />
+                    <span className="text-sm font-bold uppercase">
+                        {t('prohibitedTime')} - {t(`prohibited_${prohibitedStatus.name}`)} ({prohibitedStatus.start} - {prohibitedStatus.end})
+                    </span>
+                </div>
+            )}
+            
             {/* Header Section */}
             <div className="bg-[#1A1F2C] text-white rounded-3xl p-6 shadow-xl mb-6 relative overflow-hidden transition-all duration-300">
                 {/* Background Art */}
@@ -198,66 +243,42 @@ const PrayerTimesPage = () => {
                 </div>
 
                 <div className="relative z-10 flex flex-col items-center text-center">
+                    <h2 className="text-lg font-medium mb-4">{t('nextPrayer')} : <span className="font-bold">{t(nextPrayerInfo.name.toLowerCase())}</span></h2>
                     
-                    {isToday ? (
-                        <>
-                            <h2 className="text-lg font-medium mb-4">{t('nextPrayer')} : <span className="font-bold">{t(nextPrayerInfo.name.toLowerCase())}</span></h2>
-                            
-                            {/* Circular Timer - Added viewBox to fix clipping */}
-                            <div className="relative w-40 h-40 mb-6 flex items-center justify-center">
-                                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 160 160">
-                                    <circle cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-gray-700" />
-                                    <circle 
-                                        cx="80" cy="80" r="70" 
-                                        stroke="white" strokeWidth="6" fill="transparent" 
-                                        strokeDasharray={440} 
-                                        strokeDashoffset={440 * (nextPrayerInfo.percent / 100)}
-                                        strokeLinecap="round"
-                                        className="transition-all duration-1000 ease-linear"
-                                    />
-                                </svg>
-                                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                    <span className="text-xs uppercase opacity-70 mb-1">{t('timeLeft')}</span>
-                                    <span className="text-2xl font-mono font-bold">{nextPrayerInfo.time}</span>
-                                    <span className="text-xs uppercase opacity-70 mt-1">{t('wakib')}</span>
-                                </div>
-                            </div>
-                            
-                            {/* Rakat Info */}
-                            <p className="text-xs text-gray-400 mb-2 max-w-[80%]">
-                                {t(nextPrayerInfo.name.toLowerCase())} - {t(`rakats_${nextPrayerInfo.name.toLowerCase()}`)}
-                            </p>
-                        </>
-                    ) : (
-                        <div className="py-6">
-                            <h2 className="text-3xl font-bold mb-2">{formatNumber(dateData.readable)}</h2>
-                            <p className="text-lg opacity-80">{formatNumber(dateData.hijri.day)} {dateData.hijri.month.en} {formatNumber(dateData.hijri.year)}</p>
+                    {/* Circular Timer */}
+                    <div className="relative w-40 h-40 mb-6 flex items-center justify-center">
+                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 160 160">
+                            <circle cx="80" cy="80" r="70" stroke="currentColor" strokeWidth="6" fill="transparent" className="text-gray-700" />
+                            <circle 
+                                cx="80" cy="80" r="70" 
+                                stroke="white" strokeWidth="6" fill="transparent" 
+                                strokeDasharray={440} 
+                                strokeDashoffset={440 * (nextPrayerInfo.percent / 100)}
+                                strokeLinecap="round"
+                                className="transition-all duration-1000 ease-linear"
+                            />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-xs uppercase opacity-70 mb-1">{t('timeLeft')}</span>
+                            <span className="text-2xl font-mono font-bold">{nextPrayerInfo.time}</span>
+                            <span className="text-xs uppercase opacity-70 mt-1">{t('wakib')}</span>
                         </div>
-                    )}
+                    </div>
+                    
+                    {/* Rakat Info */}
+                    <p className="text-xs text-gray-400 mb-2 max-w-[80%]">
+                        {t(nextPrayerInfo.name.toLowerCase())} - {t(`rakats_${nextPrayerInfo.name.toLowerCase()}`)}
+                    </p>
 
                     {/* Location */}
                     <div className="text-xs text-gray-500 font-medium mt-2">
                         {settings.location.address || `${settings.location.latitude.toFixed(2)}, ${settings.location.longitude.toFixed(2)}`}
                     </div>
 
-                    {/* Date Navigation */}
-                    <div className="mt-6 flex items-center justify-between w-full bg-white/10 rounded-xl p-2 backdrop-blur-sm">
-                         <button onClick={handlePrevDay} className="p-2 hover:bg-white/10 rounded-lg transition">
-                             <ChevronLeft size={20} />
-                         </button>
-                         <div className="text-center">
-                             {isToday ? (
-                                 <>
-                                     <div className="text-sm font-bold">{formatNumber(dateData.readable)}</div>
-                                     <div className="text-xs opacity-70">{formatNumber(dateData.hijri.day)} {dateData.hijri.month.en} {formatNumber(dateData.hijri.year)}</div>
-                                 </>
-                             ) : (
-                                 <span className="text-sm font-bold">{t('prayerTimes')}</span>
-                             )}
-                         </div>
-                         <button onClick={handleNextDay} className="p-2 hover:bg-white/10 rounded-lg transition">
-                             <ChevronRight size={20} />
-                         </button>
+                    {/* Date Display */}
+                    <div className="mt-6 w-full bg-white/10 rounded-xl p-3 backdrop-blur-sm text-center">
+                        <div className="text-sm font-bold">{formatNumber(dateData.readable)}</div>
+                        <div className="text-xs opacity-70">{formatNumber(dateData.hijri.day)} {dateData.hijri.month.en} {formatNumber(dateData.hijri.year)}</div>
                     </div>
                 </div>
             </div>
@@ -271,37 +292,62 @@ const PrayerTimesPage = () => {
 
                 <div className="space-y-3">
                     {rows.map((row, index) => {
-                        // Highlight current prayer only if it is Today
-                        const isNext = isToday && nextPrayerInfo.name.toLowerCase() === row.id.toLowerCase();
+                        // Skip prohibited times if data is not available
+                        if (row.type === 'prohibited' && !row.startTime) return null;
                         
+                        // Highlight current prayer
+                        const isNext = nextPrayerInfo.name.toLowerCase() === row.id.toLowerCase();
+                        
+                        // Check if this is a prohibited time and currently active
+                        const isProhibitedActive = row.type === 'prohibited' && prohibitedStatus?.name === row.id.replace('prohibited_', '');
+                        
+                        // Determine background color based on type
                         let bgColor = 'bg-white dark:bg-surface-dark';
-                        if (isNext) bgColor = 'bg-primary/10 dark:bg-primary/20 border-l-4 border-primary';
+                        let borderColor = 'border-gray-100 dark:border-gray-800';
+                        let textColor = 'text-gray-900 dark:text-white';
+                        let iconBg = 'bg-gray-50 dark:bg-gray-800';
+                        let iconColor = 'text-primary dark:text-primary-dark';
+                        let timeColor = 'text-gray-700 dark:text-gray-300';
+                        
+                        if (isNext) {
+                            bgColor = 'bg-primary/10 dark:bg-primary/20';
+                            borderColor = 'border-l-4 border-primary';
+                        }
+                        
+                        if (row.type === 'prohibited') {
+                            bgColor = isProhibitedActive ? 'bg-red-100 dark:bg-red-900/30' : 'bg-red-50 dark:bg-red-900/10';
+                            borderColor = isProhibitedActive ? 'border-red-500' : 'border-red-200 dark:border-red-800';
+                            textColor = isProhibitedActive ? 'text-red-600 dark:text-red-400' : 'text-red-500 dark:text-red-400';
+                            iconBg = isProhibitedActive ? 'bg-red-200 dark:bg-red-800' : 'bg-red-100 dark:bg-red-900/30';
+                            iconColor = 'text-red-500';
+                            timeColor = isProhibitedActive ? 'text-red-600 dark:text-red-300' : 'text-red-500 dark:text-red-400';
+                        }
 
                         return (
                             <div 
                                 key={index}
                                 className={`
-                                    flex items-center justify-between p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800
-                                    ${bgColor}
-                                    ${!isNext ? 'hover:border-primary/50' : ''}
+                                    flex items-center justify-between p-4 rounded-xl shadow-sm border
+                                    ${bgColor} ${borderColor}
+                                    ${!isNext && row.type !== 'prohibited' ? 'hover:border-primary/50' : ''}
                                     transition-all
                                 `}
                             >
                                 <div className="flex items-center gap-3">
-                                    <div className={`p-2 rounded-full ${isNext ? 'text-primary dark:text-primary-dark bg-white dark:bg-surface-dark' : 'text-primary dark:text-primary-dark bg-gray-50 dark:bg-gray-800'}`}>
+                                    <div className={`p-2 rounded-full ${iconBg} ${iconColor}`}>
                                         {row.icon}
                                     </div>
-                                    <span className="font-semibold text-gray-900 dark:text-white">
+                                    <span className={`font-semibold ${textColor}`}>
                                         {row.label}
                                     </span>
                                 </div>
-                                <div className="text-right font-mono font-medium text-sm text-gray-700 dark:text-gray-300">
+                                <div className={`text-right font-mono font-medium text-sm ${timeColor}`}>
                                     {row.endTime ? (
                                         <>
-                                            {formatTime12(row.startTime.split(' ')[0])} - {formatTime12(row.endTime.split(' ')[0])}
+                                            {formatTime12(row.startTime?.split(' ')[0] || '')} - {formatTime12(row.endTime?.split(' ')[0] || '')}
                                         </>
                                     ) : (
-                                        formatTime12(row.startTime.split(' ')[0])
+                                        formatTime12(row.startTime?.split(' ')[0] || '')
                                     )}
                                 </div>
                             </div>
@@ -312,5 +358,5 @@ const PrayerTimesPage = () => {
         </div>
     );
 };
-
+ 
 export default PrayerTimesPage;
