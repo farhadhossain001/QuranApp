@@ -1,0 +1,18 @@
+/* =========================================
+   Global Base Styles - NoorQuran App
+   ========================================= */
+
+/* Disable rubber band / overscroll bounce effect on mobile (iOS & Android) */
+html,
+body {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
+}
+
+/* Ensure full height layout */
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+}
