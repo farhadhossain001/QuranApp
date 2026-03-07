@@ -82,6 +82,7 @@ export interface UserSettings {
   volume: number; // 0.0 to 1.0
   playbackRate: number; // 0.5, 0.75, 1, 1.25, 1.5, 2
   repeatMode: 'none' | 'one' | 'all'; // 'all' means auto-play next
+  hijriAdjustment: number; // For Hijri date adjustment
 }
 
 export const FONT_SIZES = {

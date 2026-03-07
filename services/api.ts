@@ -213,9 +213,9 @@ export const getPrayerTimes = async (lat: number, lng: number, dateObj?: Date) =
 };
 
 // Calendar
-export const getCalendar = async (month: number, year: number) => {
+export const getCalendar = async (month: number, year: number, adjustment: number = -1) => {
   try {
-    const response = await fetch(`https://api.aladhan.com/v1/gToHCalendar/${month}/${year}`);
+    const response = await fetch(`https://api.aladhan.com/v1/gToHCalendar/${month}/${year}?adjustment=${adjustment}&calendarMethod=MATHEMATICAL`);
     if (!response.ok) throw new Error("Failed to fetch calendar");
     const data = await response.json();
     return data.data;

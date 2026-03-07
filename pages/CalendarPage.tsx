@@ -5,7 +5,7 @@ import { getCalendar } from '../services/api';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, MapPin } from 'lucide-react';
 
 const CalendarPage = () => {
-    const { t, setHeaderTitle, formatNumber, settings } = useAppStore();
+    const { t, setHeaderTitle, formatNumber, settings, updateSettings } = useAppStore();
     const [viewDate, setViewDate] = useState(new Date()); // The month being viewed
     const [selectedDate, setSelectedDate] = useState(new Date()); // The specific day selected
     const [calendarData, setCalendarData] = useState<any[]>([]);
@@ -27,7 +27,7 @@ const CalendarPage = () => {
         const month = viewDate.getMonth() + 1;
         const year = viewDate.getFullYear();
 
-        getCalendar(month, year)
+        getCalendar(month, year, settings.hijriAdjustment ?? -1)
             .then(data => {
                 setCalendarData(data);
                 setLoading(false);
@@ -36,7 +36,7 @@ const CalendarPage = () => {
                 console.error(err);
                 setLoading(false);
             });
-    }, [viewDate]);
+    }, [viewDate, settings.hijriAdjustment]);
 
     const handlePrevMonth = () => {
         const newDate = new Date(viewDate);
@@ -185,16 +185,44 @@ const CalendarPage = () => {
                 </div>
 
                 {/* Legend Footer */}
-                <div className="px-6 pb-6 pt-4 border-t border-gray-100 dark:border-gray-800">
-                    <div className="flex items-center justify-center gap-8 opacity-60">
-                        <div className="flex flex-col items-center gap-1">
-                            <span className="text-xl font-bold text-gray-900 dark:text-white leading-none">{formatNumber(23)}</span>
-                            <span className="text-[9px] uppercase tracking-wider text-gray-500 font-bold">Gregorian</span>
+                {/* Legend Footer & Adjustment Controls */}
+                <div className="px-5 pb-5 pt-4 border-t border-gray-100 dark:border-gray-800">
+                    <div className="flex items-center justify-between opacity-90">
+                        {/* Legend */}
+                        <div className="flex items-center gap-5 opacity-70">
+                            <div className="flex flex-col items-center gap-1">
+                                <span className="text-lg font-bold text-gray-900 dark:text-white leading-none">{formatNumber(23)}</span>
+                                <span className="text-[9px] uppercase tracking-wider text-gray-500 font-bold">Gregorian</span>
+                            </div>
+                            <div className="w-px h-6 bg-gray-200 dark:bg-gray-700"></div>
+                            <div className="flex flex-col items-center gap-1">
+                                <span className="text-sm font-medium text-gray-500 dark:text-gray-400 leading-none mt-0.5">{formatNumber(14)}</span>
+                                <span className="text-[9px] uppercase tracking-wider text-gray-500 font-bold">Hijri</span>
+                            </div>
                         </div>
-                        <div className="w-px h-8 bg-gray-200 dark:bg-gray-700"></div>
-                        <div className="flex flex-col items-center gap-1">
-                            <span className="text-sm font-medium text-gray-500 dark:text-gray-400 leading-none">{formatNumber(14)}</span>
-                            <span className="text-[9px] uppercase tracking-wider text-gray-500 font-bold">Hijri</span>
+
+                        {/* Adjustment Control */}
+                        <div className="flex flex-col items-end gap-1.5">
+                            <span className="text-[9px] uppercase tracking-wider text-gray-500 font-bold opacity-70">Adjust Hijri Date</span>
+                            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                                <button 
+                                    onClick={() => updateSettings({ hijriAdjustment: (settings.hijriAdjustment ?? -1) - 1 })}
+                                    className="w-7 h-6 flex items-center justify-center rounded bg-white dark:bg-gray-700 shadow-sm text-gray-600 dark:text-gray-300 hover:text-primary transition text-lg leading-none"
+                                    title="Subtract 1 day"
+                                >
+                                    -
+                                </button>
+                                <span className="text-xs font-bold w-6 text-center text-gray-700 dark:text-gray-200">
+                                    {(settings.hijriAdjustment ?? -1) > 0 ? `+${settings.hijriAdjustment}` : (settings.hijriAdjustment ?? -1)}
+                                </span>
+                                <button 
+                                    onClick={() => updateSettings({ hijriAdjustment: (settings.hijriAdjustment ?? -1) + 1 })}
+                                    className="w-7 h-6 flex items-center justify-center rounded bg-white dark:bg-gray-700 shadow-sm text-gray-600 dark:text-gray-300 hover:text-primary transition text-lg leading-none"
+                                    title="Add 1 day"
+                                >
+                                    +
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -17,11 +17,13 @@ const AudioPlayerBar = () => {
   const { 
     audio, pauseAudio, resumeAudio, stopAudio, 
     playNextAyah, playPrevAyah, playAyah,
-    settings, updateSettings, t, formatNumber, reciters 
+    settings, updateSettings, t, formatNumber, reciters,
+    showBottomNav
   } = useAppStore();
   
   const location = useLocation();
   const isHome = location.pathname === '/';
+  const isBottomNavVisible = isHome || showBottomNav;
   
   const audioRef = useRef<HTMLAudioElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -191,7 +193,7 @@ const AudioPlayerBar = () => {
       )}
 
       {/* Audio Player Bar - Z-Index 60 (Must be higher than backdrop) */}
-      <div className={`fixed ${isHome ? 'bottom-16' : 'bottom-0 pb-safe'} md:bottom-0 left-0 right-0 bg-white dark:bg-surface-dark border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-[60] animate-slide-up transition-all duration-300`}>
+      <div className={`fixed ${isBottomNavVisible ? 'bottom-16' : 'bottom-0 pb-safe'} md:bottom-0 left-0 right-0 bg-white dark:bg-surface-dark border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-[60] animate-slide-up transition-all duration-300`}>
         <audio 
           ref={audioRef} 
           preload="auto"
@@ -396,8 +398,112 @@ const AudioPlayerBar = () => {
   );
 };
 
+// --- Mobile Bottom Nav with Sliding Indicator ---
+interface MobileBottomNavProps {
+  navItems: { icon: React.ReactNode; label: string; path: string }[];
+  currentPath: string;
+  onNavClick: () => void;
+}
+
+const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ navItems, currentPath, onNavClick }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [indicatorLeft, setIndicatorLeft] = useState(0);
+  const [mounted, setMounted] = useState(false);
+
+  // Find active index
+  const activeIndex = navItems.findIndex(item => item.path === currentPath);
+  const itemWidth = 100 / navItems.length; // percentage width for each item
+
+  useEffect(() => {
+    const idx = activeIndex >= 0 ? activeIndex : 0;
+    setIndicatorLeft(idx * itemWidth + (itemWidth / 2));
+    
+    // Give a slight delay before enabling transitions to avoid initial jump
+    if (!mounted) {
+      const timer = setTimeout(() => setMounted(true), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [activeIndex, itemWidth, mounted]);
+
+  return (
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 pb-safe pointer-events-none">
+      <div className="px-4 pb-4 pt-2">
+        <div 
+          ref={containerRef}
+          className="relative flex items-center h-16 w-full max-w-md mx-auto rounded-full pointer-events-auto shadow-xl border border-white/40 dark:border-gray-800"
+          style={{
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+          }}
+        >
+          {/* Dark Mode Background Override */}
+          <div 
+            className="absolute inset-0 rounded-full hidden dark:block"
+            style={{
+              background: 'linear-gradient(180deg, rgba(30,41,59,0.95) 0%, rgba(15,23,42,0.95) 100%)',
+              boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.05)'
+            }}
+          />
+
+          {/* Sliding Circle Indicator */}
+          <div 
+            className="absolute top-1/2 -ml-6 w-12 h-12 rounded-full pointer-events-none bg-primary dark:bg-primary-dark"
+            style={{
+              left: `${indicatorLeft}%`,
+              transform: `translateY(-50%)`,
+              transition: mounted ? 'left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
+              boxShadow: '0 4px 12px rgba(0, 137, 123, 0.3)',
+            }}
+          >
+            {/* Glow effect */}
+            <div className="absolute inset-0 rounded-full bg-primary opacity-50 blur-md pointer-events-none" />
+          </div>
+
+          {/* Nav Items */}
+          {navItems.map((item, index) => {
+            const isActive = currentPath === item.path;
+            
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={onNavClick}
+                className="relative z-10 flex flex-col items-center justify-center h-full group outline-none"
+                style={{ 
+                  width: `${itemWidth}%`,
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                {/* Icon Container */}
+                <div 
+                  className={`relative flex items-center justify-center transition-all duration-400 z-20 ${
+                    isActive ? 'text-white' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                  }`}
+                  style={{
+                    transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                    transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s ease',
+                  }}
+                >
+                  {React.cloneElement(item.icon as React.ReactElement<any>, { 
+                    size: 24, 
+                    strokeWidth: isActive ? 2 : 1.5
+                  })}
+                </div>
+                
+                {/* Invisible hit area expansion */}
+                <div className="absolute inset-0 z-0" />
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </nav>
+  );
+};
+
 const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const { settings, updateSettings, t, headerTitle, audio, isSettingsDrawerOpen, setSettingsDrawerOpen } = useAppStore();
+  const { settings, updateSettings, t, headerTitle, audio, isSettingsDrawerOpen, setSettingsDrawerOpen, showBottomNav, setShowBottomNav } = useAppStore();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -414,16 +520,34 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   ];
 
   const isHome = location.pathname === '/';
+
+  // Determine if bottom nav should be visible on mobile
+  // Always show on home, or when navigated via bottom nav bar
+  const isBottomNavVisible = isHome || showBottomNav;
+
+
+
+
+  // Reset showBottomNav when navigating to a page NOT via bottom nav
+  // This is handled by: bottom nav links set showBottomNav=true,
+  // and all other navigation doesn't touch it.
+  // When user navigates to home, always show bottom nav.
+  React.useEffect(() => {
+    if (isHome) {
+      setShowBottomNav(true);
+    }
+  }, [location.pathname]);
+
   // Check if we should show the Page Settings icon
   const showPageSettings = location.pathname.startsWith('/surah/') || location.pathname.startsWith('/hadith/') || location.pathname === '/asma-ul-husna';
   
   // Calculate bottom padding for mobile
   let mobilePadding = 'pb-6'; // Default minimal padding
-  if (isHome) {
-      // Home: Nav exists (h-16). If audio, Player sits on top.
+  if (isBottomNavVisible) {
+      // Nav exists (h-16). If audio, Player sits on top.
       mobilePadding = audio.audioUrl ? 'pb-40' : 'pb-24';
   } else {
-      // Not Home: No Nav. If audio, Player sits at bottom (approx h-20 with controls).
+      // No Nav. If audio, Player sits at bottom (approx h-20 with controls).
       mobilePadding = audio.audioUrl ? 'pb-28' : 'pb-6';
   }
 
@@ -437,8 +561,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <div className="flex items-center gap-3 min-w-0 flex-1">
                         {isHome ? (
                             <Link to="/" className="flex items-center gap-2 text-primary dark:text-primary-dark font-bold text-xl">
-                                <BookOpen size={24} />
-                                <span>Qur'an Light</span>
+                                <img src="/logo.png" alt="NoorQuran Logo" className="w-8 h-8 rounded-lg object-contain shadow-sm" />
+                                <span>NoorQuran</span>
                             </Link>
                         ) : (
                             <div className="flex items-center gap-3 text-gray-900 dark:text-gray-100 min-w-0 flex-1">
@@ -508,29 +632,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Audio Player */}
         <AudioPlayerBar />
 
-        {/* Mobile Bottom Nav - Conditionally rendered only on Home for Mobile */}
-        {isHome && (
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 pb-safe px-4 py-2">
-                <div className="flex items-center justify-center gap-1 bg-gray-100/80 dark:bg-gray-800/80 p-2 rounded-full border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm shadow-lg">
-                    {navItems.map((item) => {
-                        const isActive = location.pathname === item.path;
-                        return (
-                            <Link 
-                                key={item.path} 
-                                to={item.path}
-                                className={`flex flex-col items-center justify-center px-3 py-1.5 rounded-full transition-all ${
-                                    isActive 
-                                    ? 'bg-white dark:bg-surface-dark text-primary dark:text-primary-dark shadow-sm ring-1 ring-black/5 dark:ring-white/5' 
-                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                                }`}
-                            >
-                                {React.cloneElement(item.icon as React.ReactElement<any>, { size: 18 })}
-                                <span className="text-[10px] font-medium mt-0.5">{item.label}</span>
-                            </Link>
-                        );
-                    })}
-                </div>
-            </nav>
+        {/* Mobile Bottom Nav - Shown when navigated via bottom nav or on Home */}
+        {isBottomNavVisible && (
+            <MobileBottomNav 
+              navItems={navItems} 
+              currentPath={location.pathname} 
+              onNavClick={() => setShowBottomNav(true)} 
+            />
         )}
     </div>
   );

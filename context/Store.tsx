@@ -38,6 +38,8 @@ interface AppContextType {
   setSettingsDrawerOpen: (isOpen: boolean) => void;
   availableTranslations: TranslationResource[];
   reciters: Reciter[];
+  showBottomNav: boolean;
+  setShowBottomNav: (show: boolean) => void;
 }
 
 const defaultSettings: UserSettings = {
@@ -57,6 +59,7 @@ const defaultSettings: UserSettings = {
   volume: 1.0,
   playbackRate: 1.0,
   repeatMode: 'all', // Default to auto-play
+  hijriAdjustment: -1, // Default adjustment for Bangladesh (-1 day)
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -86,7 +89,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             appLanguage: browserLang, // Set default based on browser first
             ...parsed, // Override with stored settings if they exist
             selectedTranslationIds: transIds || defaultSettings.selectedTranslationIds,
-            location: (parsed.location && typeof parsed.location === 'object') ? parsed.location : defaultSettings.location 
+            location: (parsed.location && typeof parsed.location === 'object') ? parsed.location : defaultSettings.location,
+            hijriAdjustment: typeof parsed.hijriAdjustment === 'number' ? parsed.hijriAdjustment : defaultSettings.hijriAdjustment
         };
     } catch (e) {
         console.error("Failed to parse settings from local storage, using defaults", e);
@@ -112,10 +116,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   // Header Title State
-  const [headerTitle, setHeaderTitle] = useState("Qur'an Light");
+  const [headerTitle, setHeaderTitle] = useState("NoorQuran");
   
   // Drawer State
   const [isSettingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
+
+  // Bottom Nav visibility state - true when navigated via bottom nav bar
+  const [showBottomNav, setShowBottomNav] = useState(true);
 
   // Bookmarks State
   const [bookmarks, setBookmarks] = useState<Bookmark[]>(() => {
@@ -312,7 +319,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         isSettingsDrawerOpen,
         setSettingsDrawerOpen,
         availableTranslations,
-        reciters
+        reciters,
+        showBottomNav,
+        setShowBottomNav
       }}
     >
       {children}

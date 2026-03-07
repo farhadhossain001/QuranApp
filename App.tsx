@@ -3,6 +3,7 @@ import React from 'react';
 import { HashRouter, Routes, Route } from 'react-router-dom';
 import { AppProvider } from './context/Store';
 import Layout from './components/Layout';
+import WelcomeScreen from './components/WelcomeScreen';
 import HomePage from './pages/HomePage';
 import QuranPage from './pages/QuranPage';
 import PrayerTimesPage from './pages/PrayerTimesPage';
@@ -31,6 +32,7 @@ function App() {
     <AppProvider>
       <HashRouter>
         <Layout>
+          <WelcomeScreen />
           <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/quran" element={<QuranPage />} />

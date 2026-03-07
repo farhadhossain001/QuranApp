@@ -7,7 +7,12 @@ import PrayerTimesWidget from '../components/PrayerTimesWidget';
 import { PrayerTimeIcon, QuranIcon, HadithIcon, AsmaUlHusnaIcon, CalendarIcon, QiblaIcon, NamazIcon, kitabIcon, BisoyvittikIcon, RadioIcon, DuaIcon } from '../components/CustomIcons';
 
 const HomePage = () => {
-  const { recentSurah, t, getSurahName } = useAppStore();
+  const { recentSurah, t, getSurahName, setShowBottomNav } = useAppStore();
+
+  // When navigating from category links (not bottom nav), hide the bottom nav
+  const handleCategoryClick = () => {
+    setShowBottomNav(false);
+  };
 
   return (
     <div className="space-y-8 pb-20">
@@ -32,6 +37,7 @@ const HomePage = () => {
               </div>
               <Link 
                 to={`/surah/${recentSurah.id}`} 
+                onClick={handleCategoryClick}
                 className="bg-white text-primary px-6 py-3 rounded-xl font-bold text-sm hover:bg-opacity-90 transition shadow-md flex items-center gap-2"
               >
                 {t('readNow')} <ArrowRight size={16} />
@@ -48,7 +54,7 @@ const HomePage = () => {
         <div className="grid grid-cols-4 gap-4 px-2 sm:px-0">
           
           {/* Prayer Times Category */}
-          <Link to="/prayer-times" className="group flex flex-col items-center gap-2">
+          <Link to="/prayer-times" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
                <PrayerTimeIcon size={35} className="text-blue-600 dark:text-blue-400" />
             </div>
@@ -56,7 +62,7 @@ const HomePage = () => {
           </Link>
 
           {/* Quran Category */}
-          <Link to="/quran" className="group flex flex-col items-center gap-2">
+          <Link to="/quran" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
                <QuranIcon size={35} className="text-emerald-600 dark:text-emerald-400" />
             </div>
@@ -64,7 +70,7 @@ const HomePage = () => {
           </Link>
 
           {/* Hadith Category */}
-          <Link to="/hadith" className="group flex flex-col items-center gap-2">
+          <Link to="/hadith" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
                <HadithIcon size={35} className="text-indigo-600 dark:text-indigo-400" />
             </div>
@@ -72,7 +78,7 @@ const HomePage = () => {
           </Link>
 
            {/* Namaz Shikkha Category */}
-           <Link to="/namaz-shikkha" className="group flex flex-col items-center gap-2">
+           <Link to="/namaz-shikkha" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
                <NamazIcon size={35} className="text-blue-600 dark:text-blue-400" />
             </div>
@@ -80,7 +86,7 @@ const HomePage = () => {
           </Link>
 
            {/* Asma-ul-Husna Category */}
-           <Link to="/asma-ul-husna" className="group flex flex-col items-center gap-2">
+           <Link to="/asma-ul-husna" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
                <AsmaUlHusnaIcon size={35} className="text-purple-600 dark:text-purple-400" />
             </div>
@@ -88,7 +94,7 @@ const HomePage = () => {
           </Link>
           
           {/* Calendar Category */}
-          <Link to="/calendar" className="group flex flex-col items-center gap-2">
+          <Link to="/calendar" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
                <CalendarIcon size={35} className="text-cyan-600 dark:text-cyan-400" />
             </div>
@@ -96,7 +102,7 @@ const HomePage = () => {
           </Link>
 
           {/* Qibla Category */}
-          <Link to="/qibla" className="group flex flex-col items-center gap-2">
+          <Link to="/qibla" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
                <QiblaIcon size={35} className="text-orange-600 dark:text-orange-400" />
             </div>
@@ -104,7 +110,7 @@ const HomePage = () => {
           </Link>
 
           {/* Kitab Category */}
-          <Link to="/kitab" className="group flex flex-col items-center gap-2">
+          <Link to="/kitab" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
                {kitabIcon({ size: 35, className: "text-rose-600 dark:text-rose-400" })}
             </div>
@@ -112,7 +118,7 @@ const HomePage = () => {
           </Link>
 
           {/* Bisoyvittik Category */}
-          <Link to="/bisoyvittik" className="group flex flex-col items-center gap-2">
+          <Link to="/bisoyvittik" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
                <BisoyvittikIcon size={35} className="text-emerald-600 dark:text-emerald-400" />
             </div>
@@ -120,7 +126,7 @@ const HomePage = () => {
           </Link>
 
           {/* Radio Category */}
-           <Link to="/radio" className="group flex flex-col items-center gap-2">
+           <Link to="/radio" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
              <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
                 <RadioIcon size={35} className="text-red-600 dark:text-red-400" />
              </div>
@@ -128,7 +134,7 @@ const HomePage = () => {
            </Link>
 
            {/* Dua Category */}
-           <Link to="/dua" className="group flex flex-col items-center gap-2">
+           <Link to="/dua" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
              <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
                 <DuaIcon size={35} className="text-teal-600 dark:text-teal-400" />
              </div>

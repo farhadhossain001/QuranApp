@@ -4,8 +4,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Qur'an Light</title>
-    <meta name="description" content="Read and listen to the Holy Qur'an" />
+    <title>NoorQuran - Read, Listen & Learn the Holy Quran</title>
+    <meta name="description" content="NoorQuran is a beautiful, easy-to-use application to read, listen, and learn the Holy Quran. Features multiple languages, translations, tafsir, hadith, and audio recitations for seamless learning." />
+    <meta name="keywords" content="Quran, Al-Quran, NoorQuran, Read Quran, Listen Quran, Tafsir, Hadith, Islamic App, Prayer Times, Asma Ul Husna" />
+    <meta name="author" content="NoorQuran" />
+    <meta name="theme-color" content="#00897B" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="NoorQuran - Read, Listen & Learn the Holy Quran" />
+    <meta property="og:description" content="Read, listen, and learn the Holy Quran in multiple languages. Includes Tafsir, Hadith, Prayer Times, and highly customizable UI for the best experience." />
+    <meta property="og:image" content="/logo.png" />
+    
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="NoorQuran - Read, Listen & Learn the Holy Quran" />
+    <meta name="twitter:description" content="Read, listen, and learn the Holy Quran in multiple languages. Includes Tafsir, Hadith, Prayer Times, and more." />
+    <meta name="twitter:image" content="/logo.png" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="apple-touch-icon" href="/logo.png" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -53,6 +72,14 @@
               'fade-out': {
                 '0%': { opacity: '1' },
                 '100%': { opacity: '0' },
+              },
+              'shimmer': {
+                '0%': { transform: 'translateX(-100%)' },
+                '100%': { transform: 'translateX(100%)' },
+              },
+              'scale-in': {
+                '0%': { transform: 'scale(0.8)', opacity: '0' },
+                '100%': { transform: 'scale(1)', opacity: '1' },
               }
             },
             animation: {
@@ -60,6 +87,8 @@
               'slide-down': 'slide-down 0.3s ease-in forwards',
               'fade-in': 'fade-in 0.3s ease-out forwards',
               'fade-out': 'fade-out 0.3s ease-in forwards',
+              'shimmer': 'shimmer 2s infinite',
+              'scale-in': 'scale-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards',
             }
           }
         }
@@ -96,7 +125,7 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/assets/index-hU31DaOP.js"></script>
+  <script type="module" crossorigin src="/assets/index-D8l8e0vz.js"></script>
 </head>
   <body class="bg-background-light dark:bg-background-dark text-gray-900 dark:text-gray-100 transition-colors duration-300">
     <div id="root"></div>
