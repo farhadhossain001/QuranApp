@@ -50,6 +50,31 @@ const serverlessPlugin = () => {
           return;
         }
 
+        if (req.url?.startsWith('/api/pdf-proxy')) {
+          try {
+            const url = new URL(req.url, `http://${req.headers.host}`);
+            const targetUrl = url.searchParams.get('url');
+
+            if (!targetUrl) {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ error: 'Missing url parameter' }));
+              return;
+            }
+
+            const response = await fetch(targetUrl);
+            const arrayBuffer = await response.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+
+            res.setHeader('Content-Type', response.headers.get('content-type') || 'application/pdf');
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.end(buffer);
+          } catch (e: any) {
+            res.statusCode = 500;
+            res.end(JSON.stringify({ error: e.message || 'Internal Error fetch PDF' }));
+          }
+          return;
+        }
+
         next();
       });
     }
