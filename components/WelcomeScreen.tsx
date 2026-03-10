@@ -78,7 +78,7 @@ const WelcomeScreen: React.FC = () => {
     };
 
     return (
-        <div className={`fixed inset-0 z-[200] transition-all duration-700 ease-[cubic-bezier(.4,0,.2,1)] ${isExiting ? 'opacity-0 scale-110' : 'opacity-100 scale-100'}`}>
+        <div className={`fixed inset-0 z-[200] transition-all duration-700 ease-[cubic-bezier(.4,0,.2,1)] ${isExiting ? 'opacity-0 scale-110' : 'opacity-100 scale-100'} overscroll-none`}>
             {/* Full-screen gradient background */}
             <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50 dark:from-[#0a1a1a] dark:via-[#0d1f1a] dark:to-[#0a1520]" />
 
@@ -90,10 +90,10 @@ const WelcomeScreen: React.FC = () => {
             </div>
 
             {/* Geometric Pattern Overlay (Islamic inspired) */}
-            <div className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05]" 
-                style={{ 
+            <div className="absolute inset-0 pointer-events-none opacity-[0.03] dark:opacity-[0.05]"
+                style={{
                     backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23008080' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-                }} 
+                }}
             />
 
             {/* Content container */}
@@ -166,11 +166,10 @@ const WelcomeScreen: React.FC = () => {
                                     <button
                                         key={lang.code}
                                         onClick={() => updateSettings({ appLanguage: lang.code as 'en' | 'bn' })}
-                                        className={`w-full flex items-center justify-between p-5 rounded-2xl border-2 transition-all duration-300 backdrop-blur-sm ${
-                                            settings.appLanguage === lang.code
+                                        className={`w-full flex items-center justify-between p-5 rounded-2xl border-2 transition-all duration-300 backdrop-blur-sm ${settings.appLanguage === lang.code
                                                 ? 'border-primary bg-primary/5 dark:bg-primary/10 shadow-lg shadow-primary/10 scale-[1.02]'
                                                 : 'border-gray-200/60 dark:border-gray-700/60 bg-white/50 dark:bg-white/5 hover:border-primary/40 hover:bg-primary/[0.02]'
-                                        }`}
+                                            }`}
                                     >
                                         <div className="text-left">
                                             <span className={`text-lg font-bold block ${settings.appLanguage === lang.code ? 'text-primary' : 'text-gray-800 dark:text-gray-200'}`}>
@@ -178,11 +177,10 @@ const WelcomeScreen: React.FC = () => {
                                             </span>
                                             <span className="text-xs text-gray-400 mt-0.5">{lang.sub}</span>
                                         </div>
-                                        <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
-                                            settings.appLanguage === lang.code 
-                                                ? 'bg-primary border-primary text-white scale-100' 
+                                        <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${settings.appLanguage === lang.code
+                                                ? 'bg-primary border-primary text-white scale-100'
                                                 : 'border-gray-300 dark:border-gray-600 scale-90'
-                                        }`}>
+                                            }`}>
                                             {settings.appLanguage === lang.code && <Check size={14} strokeWidth={3} />}
                                         </div>
                                     </button>
@@ -224,15 +222,13 @@ const WelcomeScreen: React.FC = () => {
                                 {/* Light */}
                                 <button
                                     onClick={() => updateSettings({ theme: 'light' })}
-                                    className={`relative flex flex-col items-center p-5 rounded-2xl border-2 transition-all duration-300 ${
-                                        settings.theme === 'light'
+                                    className={`relative flex flex-col items-center p-5 rounded-2xl border-2 transition-all duration-300 ${settings.theme === 'light'
                                             ? 'border-amber-400 bg-amber-50/50 dark:bg-amber-400/10 shadow-lg shadow-amber-400/10 scale-[1.03]'
                                             : 'border-gray-200/60 dark:border-gray-700/60 bg-white/50 dark:bg-white/5 hover:border-amber-300/50'
-                                    }`}
+                                        }`}
                                 >
-                                    <div className={`w-14 h-14 rounded-2xl mb-3 flex items-center justify-center transition-all ${
-                                        settings.theme === 'light' ? 'bg-gradient-to-br from-amber-100 to-orange-100 shadow-inner' : 'bg-gray-100 dark:bg-gray-800'
-                                    }`}>
+                                    <div className={`w-14 h-14 rounded-2xl mb-3 flex items-center justify-center transition-all ${settings.theme === 'light' ? 'bg-gradient-to-br from-amber-100 to-orange-100 shadow-inner' : 'bg-gray-100 dark:bg-gray-800'
+                                        }`}>
                                         <Sun size={24} className={settings.theme === 'light' ? 'text-amber-500' : 'text-gray-400'} />
                                     </div>
                                     <span className={`font-bold text-sm ${settings.theme === 'light' ? 'text-amber-600' : 'text-gray-600 dark:text-gray-400'}`}>Light</span>
@@ -246,15 +242,13 @@ const WelcomeScreen: React.FC = () => {
                                 {/* Dark */}
                                 <button
                                     onClick={() => updateSettings({ theme: 'dark' })}
-                                    className={`relative flex flex-col items-center p-5 rounded-2xl border-2 transition-all duration-300 ${
-                                        settings.theme === 'dark'
+                                    className={`relative flex flex-col items-center p-5 rounded-2xl border-2 transition-all duration-300 ${settings.theme === 'dark'
                                             ? 'border-violet-400 bg-violet-50/50 dark:bg-violet-400/10 shadow-lg shadow-violet-400/10 scale-[1.03]'
                                             : 'border-gray-200/60 dark:border-gray-700/60 bg-white/50 dark:bg-white/5 hover:border-violet-300/50'
-                                    }`}
+                                        }`}
                                 >
-                                    <div className={`w-14 h-14 rounded-2xl mb-3 flex items-center justify-center transition-all ${
-                                        settings.theme === 'dark' ? 'bg-gradient-to-br from-violet-900/50 to-indigo-900/50 shadow-inner' : 'bg-gray-100 dark:bg-gray-800'
-                                    }`}>
+                                    <div className={`w-14 h-14 rounded-2xl mb-3 flex items-center justify-center transition-all ${settings.theme === 'dark' ? 'bg-gradient-to-br from-violet-900/50 to-indigo-900/50 shadow-inner' : 'bg-gray-100 dark:bg-gray-800'
+                                        }`}>
                                         <Moon size={24} className={settings.theme === 'dark' ? 'text-violet-400' : 'text-gray-400'} />
                                     </div>
                                     <span className={`font-bold text-sm ${settings.theme === 'dark' ? 'text-violet-500 dark:text-violet-400' : 'text-gray-600 dark:text-gray-400'}`}>Dark</span>
@@ -324,7 +318,7 @@ const WelcomeScreen: React.FC = () => {
                                         >
                                             {locating ? (
                                                 <span className="flex items-center justify-center gap-2">
-                                                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
                                                     Detecting...
                                                 </span>
                                             ) : (
