@@ -16,7 +16,7 @@ const HomePage = () => {
 
   return (
     <div className="space-y-8 pb-20">
-      
+
       {/* Prayer Times Section */}
       <PrayerTimesWidget />
 
@@ -24,7 +24,7 @@ const HomePage = () => {
       {recentSurah && (
         <div className="bg-gradient-to-r from-primary to-primary-dark rounded-2xl p-6 text-white shadow-lg relative overflow-hidden mb-6">
           <div className="absolute right-0 top-0 opacity-10 transform translate-x-1/4 -translate-y-1/4">
-             <BookOpen size={150} />
+            <BookOpen size={150} />
           </div>
 
           <div className="relative z-10">
@@ -35,8 +35,8 @@ const HomePage = () => {
                 <p className="text-xl font-bold">{getSurahName(recentSurah)}</p>
                 <p className="text-sm opacity-80">{recentSurah.translated_name.name}</p>
               </div>
-              <Link 
-                to={`/surah/${recentSurah.id}`} 
+              <Link
+                to={`/surah/${recentSurah.id}`}
                 onClick={handleCategoryClick}
                 className="bg-white text-primary px-6 py-3 rounded-xl font-bold text-sm hover:bg-opacity-90 transition shadow-md flex items-center gap-2"
               >
@@ -50,13 +50,13 @@ const HomePage = () => {
       {/* Categories Grid - App Icon Style */}
       <div>
         <h2 className="text-lg font-bold mb-4 px-1">{t('categories')}</h2>
-        
+
         <div className="grid grid-cols-4 gap-4 px-2 sm:px-0">
-          
+
           {/* Prayer Times Category */}
           <Link to="/prayer-times" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <PrayerTimeIcon size={35} className="text-blue-600 dark:text-blue-400" />
+              <PrayerTimeIcon size={35} className="text-blue-600 dark:text-blue-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('prayerTimes')}</span>
           </Link>
@@ -64,7 +64,7 @@ const HomePage = () => {
           {/* Quran Category */}
           <Link to="/quran" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <QuranIcon size={35} className="text-emerald-600 dark:text-emerald-400" />
+              <QuranIcon size={35} className="text-emerald-600 dark:text-emerald-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('quran')}</span>
           </Link>
@@ -72,31 +72,40 @@ const HomePage = () => {
           {/* Hadith Category */}
           <Link to="/hadith" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <HadithIcon size={35} className="text-indigo-600 dark:text-indigo-400" />
+              <HadithIcon size={35} className="text-indigo-600 dark:text-indigo-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('hadith')}</span>
           </Link>
 
-           {/* Namaz Shikkha Category */}
-           <Link to="/namaz-shikkha" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
+          {/* Kitab Category */}
+          <Link to="/kitab" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <NamazIcon size={35} className="text-blue-600 dark:text-blue-400" />
+              {kitabIcon({ size: 35, className: "text-rose-600 dark:text-rose-400" })}
+            </div>
+            <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('kitab')}</span>
+          </Link>
+
+
+          {/* Namaz Shikkha Category */}
+          <Link to="/namaz-shikkha" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
+            <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+              <NamazIcon size={35} className="text-blue-600 dark:text-blue-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('namazShikkha')}</span>
           </Link>
 
-           {/* Asma-ul-Husna Category */}
-           <Link to="/asma-ul-husna" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
+          {/* Asma-ul-Husna Category */}
+          <Link to="/asma-ul-husna" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <AsmaUlHusnaIcon size={35} className="text-purple-600 dark:text-purple-400" />
+              <AsmaUlHusnaIcon size={35} className="text-purple-600 dark:text-purple-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('asmaUlHusna')}</span>
           </Link>
-          
+
           {/* Calendar Category */}
           <Link to="/calendar" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <CalendarIcon size={35} className="text-cyan-600 dark:text-cyan-400" />
+              <CalendarIcon size={35} className="text-cyan-600 dark:text-cyan-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('calendar')}</span>
           </Link>
@@ -104,44 +113,37 @@ const HomePage = () => {
           {/* Qibla Category */}
           <Link to="/qibla" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <QiblaIcon size={35} className="text-orange-600 dark:text-orange-400" />
+              <QiblaIcon size={35} className="text-orange-600 dark:text-orange-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('qibla')}</span>
           </Link>
 
-          {/* Kitab Category */}
-          <Link to="/kitab" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
-            <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               {kitabIcon({ size: 35, className: "text-rose-600 dark:text-rose-400" })}
-            </div>
-            <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('kitab')}</span>
-          </Link>
 
           {/* Bisoyvittik Category */}
           <Link to="/bisoyvittik" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-               <BisoyvittikIcon size={35} className="text-emerald-600 dark:text-emerald-400" />
+              <BisoyvittikIcon size={35} className="text-emerald-600 dark:text-emerald-400" />
             </div>
             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('bisoyvittik')}</span>
           </Link>
 
           {/* Radio Category */}
-           <Link to="/radio" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
-             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-                <RadioIcon size={35} className="text-red-600 dark:text-red-400" />
-             </div>
-             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('radio')}</span>
-           </Link>
+          <Link to="/radio" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
+            <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+              <RadioIcon size={35} className="text-red-600 dark:text-red-400" />
+            </div>
+            <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('radio')}</span>
+          </Link>
 
-           {/* Dua Category */}
-           <Link to="/dua" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
-             <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
-                <DuaIcon size={35} className="text-teal-600 dark:text-teal-400" />
-             </div>
-             <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('dua')}</span>
-           </Link>
+          {/* Dua Category */}
+          <Link to="/dua" onClick={handleCategoryClick} className="group flex flex-col items-center gap-2">
+            <div className="w-[65px] h-[65px] sm:w-20 sm:h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[24px] flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-md group-active:scale-95">
+              <DuaIcon size={35} className="text-teal-600 dark:text-teal-400" />
+            </div>
+            <span className="text-[11px] sm:text-xs font-semibold text-gray-700 dark:text-gray-300 text-center leading-tight mt-1">{t('dua')}</span>
+          </Link>
 
-         </div>
+        </div>
       </div>
     </div>
   );
