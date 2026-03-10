@@ -95,6 +95,11 @@
       }
     </script>
     <style>
+      html, body {
+        overscroll-behavior-y: none;
+        touch-action: pan-x pan-y;
+      }
+
       /* Custom Scrollbar for cleaner look */
       ::-webkit-scrollbar {
         width: 8px;
@@ -125,9 +130,9 @@
   }
 }
 </script>
-  <script type="module" crossorigin src="/assets/index-D8l8e0vz.js"></script>
+  <script type="module" crossorigin src="/assets/index-Zy8HhHgf.js"></script>
 </head>
-  <body class="bg-background-light dark:bg-background-dark text-gray-900 dark:text-gray-100 transition-colors duration-300">
+  <body class="bg-background-light dark:bg-background-dark text-gray-900 dark:text-gray-100 transition-colors duration-300 overscroll-y-none bg-fixed">
     <div id="root"></div>
 </body>
 </html>

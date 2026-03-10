@@ -586,8 +586,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     key={item.path}
                     to={item.path}
                     className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${isActive
-                        ? 'bg-white dark:bg-surface-dark text-primary dark:text-primary-dark shadow-sm ring-1 ring-black/5 dark:ring-white/5'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
+                      ? 'bg-white dark:bg-surface-dark text-primary dark:text-primary-dark shadow-sm ring-1 ring-black/5 dark:ring-white/5'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
                       }`}
                   >
                     {React.cloneElement(item.icon as React.ReactElement<any>, { size: 16 })}
