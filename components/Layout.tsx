@@ -6,8 +6,9 @@ import { getSpecificAyahAudio } from '../services/api';
 import {
   Home, Bookmark, Settings, Search, Play, Pause, X, Moon, Sun, BookOpen,
   SkipBack, SkipForward, Repeat, Repeat1, Volume2, VolumeX, Gauge, Loader2,
-  ArrowLeft, SlidersHorizontal, Mic, Check, ChevronUp, BookMarked
+  ArrowLeft, SlidersHorizontal, Mic, Check, ChevronUp, BookMarked, Menu
 } from 'lucide-react';
+import SideNav from './SideNav';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -505,6 +506,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { settings, updateSettings, t, headerTitle, audio, isSettingsDrawerOpen, setSettingsDrawerOpen, showBottomNav, setShowBottomNav } = useAppStore();
   const location = useLocation();
   const navigate = useNavigate();
+  const [isSideNavOpen, setIsSideNavOpen] = useState(false);
 
   const toggleTheme = () => {
     updateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' });
@@ -617,6 +619,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               >
                 {settings.theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
               </button>
+
+              <button
+                onClick={() => setIsSideNavOpen(true)}
+                className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition"
+                aria-label="Open Menu"
+              >
+                <Menu size={20} />
+              </button>
             </div>
           </div>
         </div>
@@ -638,6 +648,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           onNavClick={() => setShowBottomNav(true)}
         />
       )}
+
+      {/* Side Navigation Panel */}
+      <SideNav isOpen={isSideNavOpen} onClose={() => setIsSideNavOpen(false)} />
     </div>
   );
 };

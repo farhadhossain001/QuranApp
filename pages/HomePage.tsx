@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { BookOpen, ArrowRight } from 'lucide-react';
 import { useAppStore } from '../context/Store';
 import PrayerTimesWidget from '../components/PrayerTimesWidget';
+import RandomAyahWidget from '../components/RandomAyahWidget';
 import { PrayerTimeIcon, QuranIcon, HadithIcon, AsmaUlHusnaIcon, CalendarIcon, QiblaIcon, NamazIcon, kitabIcon, BisoyvittikIcon, RadioIcon, DuaIcon } from '../components/CustomIcons';
 
 const HomePage = () => {
@@ -49,8 +50,6 @@ const HomePage = () => {
 
       {/* Categories Grid - App Icon Style */}
       <div>
-        <h2 className="text-lg font-bold mb-4 px-1">{t('categories')}</h2>
-
         <div className="grid grid-cols-4 gap-4 px-2 sm:px-0">
 
           {/* Prayer Times Category */}
@@ -145,6 +144,9 @@ const HomePage = () => {
 
         </div>
       </div>
+
+      {/* Random Ayah of the Hour */}
+      <RandomAyahWidget />
     </div>
   );
 };

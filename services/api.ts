@@ -125,6 +125,21 @@ export const getAyahAudioUrl = (surahId: number, ayahId: number, reciterId = 7):
   return '';
 };
 
+// Random Ayah
+export const getRandomAyah = async (translationIds: number[] = [20]): Promise<Ayah | null> => {
+  try {
+    const translationsParam = translationIds.length > 0 ? translationIds.join(',') : '20';
+    const url = `${BASE_URL}/verses/random?language=en&words=false&translations=${translationsParam}&fields=text_uthmani`;
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Failed to fetch random ayah');
+    const data = await response.json();
+    return data.verse;
+  } catch (error) {
+    console.error(error);
+    return null;
+  }
+};
+
 // Search
 export const searchVerses = async (query: string, page = 1) => {
   try {
