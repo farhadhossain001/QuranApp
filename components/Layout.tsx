@@ -521,13 +521,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   ];
 
   const isHome = location.pathname === '/';
+  const isMainTab = navItems.some(item => item.path === location.pathname);
 
   // Determine if bottom nav should be visible on mobile
-  // Always show on home, or when navigated via bottom nav bar
-  const isBottomNavVisible = isHome || showBottomNav;
-
-
-
+  // Always show on home, or when navigated via bottom nav bar to a main tab
+  const isBottomNavVisible = isHome || (showBottomNav && isMainTab);
 
   // Reset showBottomNav when navigating to a page NOT via bottom nav
   // This is handled by: bottom nav links set showBottomNav=true,
