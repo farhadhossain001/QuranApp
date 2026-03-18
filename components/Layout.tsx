@@ -508,6 +508,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const [isSideNavOpen, setIsSideNavOpen] = useState(false);
 
+  // Scroll to top on route change
+  useEffect(() => {
+    const rootElement = document.getElementById('root');
+    if (rootElement) {
+      rootElement.scrollTo(0, 0);
+    }
+  }, [location.pathname]);
+
   const toggleTheme = () => {
     updateSettings({ theme: settings.theme === 'light' ? 'dark' : 'light' });
   };
