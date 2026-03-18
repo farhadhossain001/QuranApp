@@ -399,7 +399,7 @@ const AudioPlayerBar = () => {
   );
 };
 
-// --- Mobile Bottom Nav ---
+// --- Mobile Bottom Nav with Sliding Indicator ---
 interface MobileBottomNavProps {
   navItems: { icon: React.ReactNode; label: string; path: string }[];
   currentPath: string;
@@ -407,14 +407,62 @@ interface MobileBottomNavProps {
 }
 
 const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ navItems, currentPath, onNavClick }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [indicatorLeft, setIndicatorLeft] = useState(0);
+  const [mounted, setMounted] = useState(false);
+
+  // Find active index
+  const activeIndex = navItems.findIndex(item => item.path === currentPath);
+  const itemWidth = 100 / navItems.length; // percentage width for each item
+
+  useEffect(() => {
+    const idx = activeIndex >= 0 ? activeIndex : 0;
+    setIndicatorLeft(idx * itemWidth + (itemWidth / 2));
+
+    // Give a slight delay before enabling transitions to avoid initial jump
+    if (!mounted) {
+      const timer = setTimeout(() => setMounted(true), 100);
+      return () => clearTimeout(timer);
+    }
+  }, [activeIndex, itemWidth, mounted]);
+
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 pb-safe pointer-events-none overscroll-none">
       <div className="px-4 pb-4 pt-2">
         <div
-          className="relative flex items-center h-16 w-full max-w-md mx-auto rounded-2xl pointer-events-auto shadow-xl border border-white/40 dark:border-gray-800 bg-white/95 dark:bg-surface-dark/95 backdrop-blur-md"
+          ref={containerRef}
+          className="relative flex items-center h-16 w-full max-w-md mx-auto rounded-full pointer-events-auto shadow-xl border border-white/40 dark:border-gray-800"
+          style={{
+            background: 'linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+          }}
         >
+          {/* Dark Mode Background Override */}
+          <div
+            className="absolute inset-0 rounded-full hidden dark:block"
+            style={{
+              background: 'linear-gradient(180deg, rgba(30,41,59,0.95) 0%, rgba(15,23,42,0.95) 100%)',
+              boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.05)'
+            }}
+          />
+
+          {/* Sliding Circle Indicator */}
+          <div
+            className="absolute top-1/2 -ml-6 w-12 h-12 rounded-full pointer-events-none bg-primary dark:bg-primary-dark"
+            style={{
+              left: `${indicatorLeft}%`,
+              transform: `translateY(-50%)`,
+              transition: mounted ? 'left 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' : 'none',
+              boxShadow: '0 4px 12px rgba(0, 137, 123, 0.3)',
+            }}
+          >
+            {/* Glow effect */}
+            <div className="absolute inset-0 rounded-full bg-primary opacity-50 blur-md pointer-events-none" />
+          </div>
+
           {/* Nav Items */}
-          {navItems.map((item) => {
+          {navItems.map((item, index) => {
             const isActive = currentPath === item.path;
 
             return (
@@ -422,22 +470,29 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ navItems, currentPath
                 key={item.path}
                 to={item.path}
                 onClick={onNavClick}
-                className="relative z-10 flex flex-col items-center justify-center h-full flex-1 group outline-none"
-                style={{ WebkitTapHighlightColor: 'transparent' }}
+                className="relative z-10 flex flex-col items-center justify-center h-full group outline-none"
+                style={{
+                  width: `${itemWidth}%`,
+                  WebkitTapHighlightColor: 'transparent',
+                }}
               >
+                {/* Icon Container */}
                 <div
-                  className={`relative flex flex-col items-center justify-center transition-all duration-300 z-20 ${
-                    isActive ? 'text-primary dark:text-primary-dark' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
-                  }`}
+                  className={`relative flex items-center justify-center transition-all duration-400 z-20 ${isActive ? 'text-white' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'
+                    }`}
+                  style={{
+                    transform: isActive ? 'scale(1.1)' : 'scale(1)',
+                    transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), color 0.3s ease',
+                  }}
                 >
                   {React.cloneElement(item.icon as React.ReactElement<any>, {
-                    size: 22,
-                    strokeWidth: isActive ? 2.5 : 2
+                    size: 24,
+                    strokeWidth: isActive ? 2 : 1.5
                   })}
-                  <span className={`text-[10px] mt-1 font-medium ${isActive ? 'opacity-100' : 'opacity-80'}`}>
-                    {item.label}
-                  </span>
                 </div>
+
+                {/* Invisible hit area expansion */}
+                <div className="absolute inset-0 z-0" />
               </Link>
             );
           })}
@@ -523,19 +578,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-6">
+            <nav className="hidden md:flex items-center gap-1 bg-gray-100/80 dark:bg-gray-800/80 p-1.5 rounded-full border border-gray-200/50 dark:border-gray-700/50 backdrop-blur-sm">
               {navItems.map((item) => {
                 const isActive = location.pathname === item.path;
                 return (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`text-sm font-semibold transition-all flex items-center gap-2 ${isActive
-                      ? 'text-primary dark:text-primary-dark'
-                      : 'text-gray-500 dark:text-gray-400 hover:text-primary/80 dark:hover:text-primary-dark/80'
+                    className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${isActive
+                      ? 'bg-white dark:bg-surface-dark text-primary dark:text-primary-dark shadow-sm ring-1 ring-black/5 dark:ring-white/5'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
                       }`}
                   >
-                    {React.cloneElement(item.icon as React.ReactElement<any>, { size: 18, strokeWidth: isActive ? 2.5 : 2 })}
+                    {React.cloneElement(item.icon as React.ReactElement<any>, { size: 16 })}
                     <span>{item.label}</span>
                   </Link>
                 );
